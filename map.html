@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Map — OpenBookMap</title>
+<meta name="description" content="A global map of used bookstores, with searchable inventories." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root {
+    --paper: #f4ecd8; --paper-deep: #ebe1c8;
+    --ink: #1a1613; --ink-soft: #3a332c;
+    --rule: #1a16131a; --stamp: #a8321c; --stamp-deep: #7a2415;
+    --accent: #2a4d3a; --card: #fbf5e4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: 'Fraunces', Georgia, serif; color: var(--ink); background: var(--paper); }
+
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    background: var(--paper); border-bottom: 1px solid var(--rule);
+    padding: 10px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  }
+  .brand {
+    font-style: italic; font-weight: 800; font-size: 22px;
+    letter-spacing: -0.01em; text-decoration: none; color: var(--ink);
+  }
+  .brand .dot { color: var(--stamp); }
+  .topbar nav { display: flex; gap: 18px; align-items: center;
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .topbar nav a { color: var(--ink-soft); text-decoration: none;
+    padding: 6px 10px; border: 1px solid transparent; border-radius: 2px;
+  }
+  .topbar nav a:hover { color: var(--ink); border-color: var(--rule); }
+  .topbar nav a.cta { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .topbar nav a.cta:hover { background: var(--stamp); border-color: var(--stamp); }
+
+  #map { position: absolute; top: 52px; left: 0; right: 0; bottom: 0; }
+
+  .searchbar {
+    position: fixed; top: 66px; left: 18px; z-index: 999;
+    background: var(--card); border: 1px solid var(--ink);
+    box-shadow: 0 2px 8px #0002; padding: 8px 10px;
+    display: flex; gap: 6px; align-items: center;
+    border-radius: 2px; max-width: calc(100vw - 36px);
+  }
+  .searchbar input {
+    border: none; background: transparent; outline: none;
+    font-family: 'DM Mono', monospace; font-size: 13px;
+    width: 220px; color: var(--ink);
+  }
+  .searchbar button {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    background: var(--ink); color: var(--paper);
+    border: none; padding: 5px 9px; cursor: pointer; border-radius: 2px;
+  }
+  .searchbar .status {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: var(--ink-soft); letter-spacing: 0.1em; padding-left: 4px;
+  }
+
+  .panel {
+    position: fixed; top: 52px; right: 0; bottom: 0;
+    width: 400px; max-width: 100vw;
+    background: var(--paper); border-left: 1px solid var(--rule);
+    box-shadow: -2px 0 10px #0001; overflow-y: auto;
+    transform: translateX(100%); transition: transform 0.28s ease-out;
+    z-index: 998;
+  }
+  .panel.open { transform: translateX(0); }
+  .panel .close {
+    position: absolute; top: 12px; right: 14px;
+    background: none; border: 1px solid var(--rule);
+    width: 28px; height: 28px; border-radius: 2px;
+    cursor: pointer; font-size: 18px; color: var(--ink-soft); line-height: 1;
+  }
+  .panel .close:hover { color: var(--stamp); border-color: var(--stamp); }
+
+  .panel-inner { padding: 32px 26px 40px; }
+  .panel .eyebrow {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--ink-soft); margin-bottom: 8px;
+  }
+  .panel h2 {
+    font-size: 26px; font-weight: 600; line-height: 1.2;
+    margin-bottom: 6px; letter-spacing: -0.01em;
+  }
+  .panel .addr { font-size: 13px; color: var(--ink-soft); margin-bottom: 16px; }
+  .panel .stats {
+    display: flex; gap: 20px;
+    border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+    padding: 14px 0; margin-bottom: 20px;
+  }
+  .panel .stats div {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    letter-spacing: 0.1em; color: var(--ink-soft); text-transform: uppercase;
+  }
+  .panel .stats strong {
+    display: block; font-family: 'Fraunces', serif;
+    font-size: 22px; color: var(--ink); font-weight: 600;
+  }
+  .panel h3 {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 20px 0 12px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--rule);
+  }
+  .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .photo-grid img {
+    width: 100%; aspect-ratio: 1; object-fit: cover;
+    border: 1px solid var(--rule); border-radius: 2px; cursor: pointer;
+  }
+  .book-list { list-style: none; }
+  .book-list li {
+    padding: 10px 0; border-bottom: 1px solid var(--rule);
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+  }
+  .book-list .title { font-size: 15px; }
+  .book-list .author { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-soft); }
+  .empty {
+    padding: 20px; text-align: center; font-size: 14px;
+    color: var(--ink-soft); font-style: italic;
+    border: 1px dashed var(--rule); border-radius: 2px;
+  }
+  .cta-bar { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--rule); }
+  .cta-bar a {
+    display: inline-block; background: var(--stamp); color: var(--paper);
+    text-decoration: none; font-family: 'DM Mono', monospace; font-size: 12px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 10px 16px; border-radius: 2px;
+  }
+  .cta-bar a:hover { background: var(--stamp-deep); }
+
+  .book-marker {
+    background: var(--stamp); width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--paper); box-shadow: 0 1px 3px #0004;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--paper); font-size: 12px; font-weight: 700;
+  }
+
+  .loading {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--paper);
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 8px 14px; border-radius: 2px; z-index: 999; display: none;
+  }
+  .loading.show { display: block; }
+
+  @media (max-width: 600px) {
+    .panel { width: 100%; }
+    .searchbar input { width: 150px; }
+    .topbar nav a:not(.cta) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" class="brand">OpenBookMap<span class="dot">.</span></a>
+  <nav>
+    <a href="index.html">About</a>
+    <a href="map.html">Map</a>
+    <a href="upload.html" class="cta">Contribute</a>
+  </nav>
+</div>
+
+<div class="searchbar">
+  <input type="text" id="search-input" placeholder="Search a city…" />
+  <button id="search-btn">Go</button>
+  <span class="status" id="shop-count">search a city to begin</span>
+</div>
+
+<div id="map"></div>
+<div class="loading" id="loading">Loading bookstores…</div>
+
+<aside class="panel" id="panel">
+  <button class="close" id="panel-close">×</button>
+  <div class="panel-inner" id="panel-inner"></div>
+</aside>
+
+<script>
+  const SUPABASE_URL  = 'https://jmikulhgpgfaarqzwrgl.supabase.co';
+  const SUPABASE_ANON = 'sb_publishable_Ysk7PrEmW07t-U_h-aUCKA_2mHttSKY';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+
+  const map = L.map('map', { zoomControl: true, worldCopyJump: true }).setView([20, 0], 2);
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · OpenBookMap',
+  }).addTo(map);
+
+  const cluster = L.markerClusterGroup({ maxClusterRadius: 50, showCoverageOnHover: false });
+  map.addLayer(cluster);
+
+  const bookIcon = L.divIcon({
+    className: '',
+    html: '<div class="book-marker">📖</div>',
+    iconSize: [22, 22], iconAnchor: [11, 11],
+  });
+
+  const loadedShops = new Map();
+  let fetchTimer = null;
+
+  function overpassQuery(bbox) {
+    return `[out:json][timeout:25];
+(
+  nwr["shop"="books"]["second_hand"~"yes|only"](${bbox.join(',')});
+  nwr["shop"="second_hand"]["books"="yes"](${bbox.join(',')});
+);
+out center tags;`;
+  }
+
+  async function fetchShopsInView() {
+    if (map.getZoom() < 6) {
+      document.getElementById('shop-count').textContent = 'zoom in to load';
+      return;
+    }
+    const b = map.getBounds();
+    const bbox = [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()];
+    setLoading(true);
+    try {
+      const res = await fetch(OVERPASS_URL, {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(overpassQuery(bbox)),
+      });
+      if (!res.ok) throw new Error('Overpass ' + res.status);
+      const data = await res.json();
+      let added = 0;
+      for (const el of data.elements || []) {
+        const key = el.type + '/' + el.id;
+        if (loadedShops.has(key)) continue;
+        const lat = el.lat ?? el.center?.lat;
+        const lon = el.lon ?? el.center?.lon;
+        if (lat == null || lon == null) continue;
+        const marker = L.marker([lat, lon], { icon: bookIcon });
+        marker.bindTooltip(el.tags?.name || 'Unnamed bookstore', { direction: 'top', offset: [0, -8] });
+        marker.on('click', () => openShopPanel(el));
+        cluster.addLayer(marker);
+        loadedShops.set(key, marker);
+        added++;
+      }
+      document.getElementById('shop-count').textContent =
+        loadedShops.size + ' shops' + (added ? ' (+' + added + ')' : '');
+    } catch (err) {
+      console.error('Overpass failed:', err);
+      document.getElementById('shop-count').textContent = 'fetch failed — try again';
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function setLoading(on) { document.getElementById('loading').classList.toggle('show', on); }
+
+  map.on('moveend', () => {
+    clearTimeout(fetchTimer);
+    fetchTimer = setTimeout(fetchShopsInView, 700);
+  });
+
+  const panel      = document.getElementById('panel');
+  const panelInner = document.getElementById('panel-inner');
+  document.getElementById('panel-close').addEventListener('click', () => panel.classList.remove('open'));
+
+  async function openShopPanel(osmElement) {
+    const name  = osmElement.tags?.name || 'Unnamed bookstore';
+    const addr  = [
+      osmElement.tags?.['addr:street'],
+      osmElement.tags?.['addr:city'],
+      osmElement.tags?.['addr:country'],
+    ].filter(Boolean).join(', ');
+    const website = osmElement.tags?.website || osmElement.tags?.['contact:website'];
+    const lat = osmElement.lat ?? osmElement.center?.lat;
+    const lon = osmElement.lon ?? osmElement.center?.lon;
+
+    panelInner.innerHTML = `
+      <div class="eyebrow">Bookstore · OSM ${osmElement.type}/${osmElement.id}</div>
+      <h2>${escapeHtml(name)}</h2>
+      <div class="addr">${escapeHtml(addr || 'Address unknown')}${
+        website ? ` · <a href="${escapeAttr(website)}" target="_blank" rel="noopener">website</a>` : ''
+      }</div>
+      <div class="stats">
+        <div><strong id="stat-photos">—</strong>photos</div>
+        <div><strong id="stat-books">—</strong>books indexed</div>
+      </div>
+      <h3>Shelf photos</h3>
+      <div id="photos-area"><div class="empty">Loading…</div></div>
+      <h3>Books on the shelves</h3>
+      <div id="books-area"><div class="empty">Loading…</div></div>
+      <div class="cta-bar">
+        <a href="upload.html?osm_type=${encodeURIComponent(osmElement.type)}&osm_id=${encodeURIComponent(osmElement.id)}&name=${encodeURIComponent(name)}&lat=${lat}&lon=${lon}">
+          Contribute photos →
+        </a>
+      </div>
+    `;
+    panel.classList.add('open');
+
+    const { data: shops } = await sb
+      .from('shops')
+      .select('id, photo_count, book_count')
+      .eq('osm_type', osmElement.type)
+      .eq('osm_id', osmElement.id)
+      .limit(1);
+
+    if (!shops || shops.length === 0) {
+      document.getElementById('stat-photos').textContent = '0';
+      document.getElementById('stat-books').textContent = '0';
+      document.getElementById('photos-area').innerHTML =
+        '<div class="empty">No photos yet. Be the first to contribute.</div>';
+      document.getElementById('books-area').innerHTML =
+        '<div class="empty">No books indexed yet.</div>';
+      return;
+    }
+
+    const shop = shops[0];
+    document.getElementById('stat-photos').textContent = shop.photo_count;
+    document.getElementById('stat-books').textContent  = shop.book_count;
+
+    const { data: photos } = await sb
+      .from('photos')
+      .select('id, storage_path, caption, shelf_label')
+      .eq('shop_id', shop.id)
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    const photosArea = document.getElementById('photos-area');
+    if (!photos || photos.length === 0) {
+      photosArea.innerHTML = '<div class="empty">No photos yet.</div>';
+    } else {
+      photosArea.innerHTML = '<div class="photo-grid">' + photos.map(p => {
+        const { data } = sb.storage.from('shelf-photos').getPublicUrl(p.storage_path);
+        return `<img src="${escapeAttr(data.publicUrl)}" alt="${escapeAttr(p.shelf_label || '')}" title="${escapeAttr(p.caption || '')}" onclick="window.open('${escapeAttr(data.publicUrl)}', '_blank')" />`;
+      }).join('') + '</div>';
+    }
+
+    const { data: books } = await sb
+      .from('books')
+      .select('title, author')
+      .eq('shop_id', shop.id)
+      .order('title')
+      .limit(100);
+
+    const booksArea = document.getElementById('books-area');
+    if (!books || books.length === 0) {
+      booksArea.innerHTML = '<div class="empty">No books indexed yet.</div>';
+    } else {
+      booksArea.innerHTML = '<ul class="book-list">' + books.map(b =>
+        `<li><span class="title">${escapeHtml(b.title)}</span><span class="author">${escapeHtml(b.author || '')}</span></li>`
+      ).join('') + '</ul>';
+    }
+  }
+
+  document.getElementById('search-btn').addEventListener('click', doSearch);
+  document.getElementById('search-input').addEventListener('keypress', e => {
+    if (e.key === 'Enter') doSearch();
+  });
+
+  async function doSearch() {
+    const q = document.getElementById('search-input').value.trim();
+    if (!q) return;
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q);
+    try {
+      const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+      const data = await res.json();
+      if (data && data[0]) {
+        map.setView([parseFloat(data[0].lat), parseFloat(data[0].lon)], 13);
+      } else {
+        alert('Could not find "' + q + '"');
+      }
+    } catch (e) {
+      alert('Search failed — try again.');
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[c]));
+  }
+  function escapeAttr(s) { return escapeHtml(s); }
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('lat') && params.get('lon')) {
+    map.setView([parseFloat(params.get('lat')), parseFloat(params.get('lon'))], 14);
+  }
+</script>
+
+</body>
+</html>
