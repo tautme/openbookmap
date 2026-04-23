@@ -228,8 +228,7 @@
   function overpassQuery(bbox) {
     return `[out:json][timeout:25];
 (
-  nwr["shop"="books"]["second_hand"~"yes|only"](${bbox.join(',')});
-  nwr["shop"="second_hand"]["books"="yes"](${bbox.join(',')});
+  nwr["shop"="books"](${bbox.join(',')});
 );
 out center tags;`;
   }
