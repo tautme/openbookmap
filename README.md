@@ -11,11 +11,13 @@ A global, open map of used bookstores — with searchable inventories built from
 ## Files
 
 ```
-index.html     → Brochure / about page
-map.html       → The global map of used bookstores
-upload.html    → Contribute flow (sign in → upload → OCR → save)
-schema.sql     → Database schema — paste into Supabase SQL editor
-README.md      → This file
+index.html                   → Brochure / about page
+map.html                     → The global map of used bookstores
+upload.html                  → Contribute flow (sign in → upload → detect → OCR → save)
+schema.sql                   → Database schema — paste into Supabase SQL editor
+models/spine-yolov8n.onnx    → Fine-tuned YOLOv8n spine detector (~12 MB, runs in-browser)
+training/yolo_spine.ipynb    → Colab notebook to re-train the detector
+README.md                    → This file
 ```
 
 ---
@@ -108,13 +110,24 @@ Open [http://localhost:8000](http://localhost:8000).
 **Not yet built (good first contributions):**
 - Global text search: "find all shops with a copy of *Gravity's Rainbow*"
 - User profile page: "see everything I've contributed"
-- OCR quality: current extraction is naive; a smarter pipeline (vision-LLM fallback when OCR confidence is low) would roughly double accuracy
+- OCR quality: a YOLOv8n spine detector now runs client-side before OCR (see `models/spine-yolov8n.onnx` + `training/yolo_spine.ipynb`). Next wins: oriented bounding boxes for tilted spines, a real deskew pass, and a vision-LLM fallback when per-spine OCR confidence is low.
 - OSM account linking (OAuth)
 - Moderation tools: flag / vote-down bad entries
 - Mobile camera capture (swap to `capture="environment"` on phones)
 - A real mailing-list provider (Buttondown, Listmonk, Mailchimp)
 
 ---
+
+## Re-training the spine detector
+
+The upload flow crops each spine with a YOLOv8n detector before running OCR per crop. To regenerate `models/spine-yolov8n.onnx`:
+
+1. Open `training/yolo_spine.ipynb` in Google Colab (runtime: T4 GPU is plenty).
+2. Paste a Roboflow API key into the indicated cell. The default dataset is `capjamesg/book-spines`; if that slug/version has moved, swap in any other "book spine" dataset from [Roboflow Universe](https://universe.roboflow.com/) via the fallback cell.
+3. Run all cells. The last cell downloads `spine-yolov8n.onnx`.
+4. Commit it to `models/spine-yolov8n.onnx` in this repo — GitHub Pages will serve it directly. The browser fetches it from `./models/spine-yolov8n.onnx` relative to `upload.html`.
+
+If the ONNX file is missing or fails to load, `upload.html` falls back to the old full-image OCR path, so nothing is broken while you iterate.
 
 ## Contributing
 
