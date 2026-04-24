@@ -1,684 +1,182 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>OpenBookMap — A global map of used bookstores</title>
-<meta name="description" content="An open, community-built map of used bookstores worldwide, with searchable inventories built from shelf photos. Work in progress. Join us." />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenBookMap — A global map of used bookstores</title>
+    <meta
+      name="description"
+      content="An open, community-built map of used bookstores worldwide, with searchable inventories built from shelf photos. Work in progress. Join us."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="landing-wrap">
+      <header class="mast">
+        <div class="stamp-badge">Work&nbsp;in&nbsp;Progress</div>
+        <div class="eyebrow">Est. MMXXVI · Vol. I · No. 1</div>
+        <h1 class="title">OpenBookMap</h1>
+        <div class="subtitle">
+          A global atlas <span style="opacity: 0.5">·</span> of used bookstores
+          <span style="opacity: 0.5">·</span> and the books inside them
+        </div>
+        <div style="margin-top: 22px">
+          <a href="/map.html" class="btn stamp">Open the Map →</a>
+        </div>
+      </header>
 
-<!--
-  =====================================================================
-  REPLACE THE PLACEHOLDERS BELOW BEFORE DEPLOYING
-  =====================================================================
-  [PROJECT_NAME]        → your project name (default used: OpenBookMap)
-  [MAILING_LIST_ACTION] → form endpoint URL (Buttondown, Mailchimp, etc.)
-  [MAILING_LIST_FIELD]  → name of the email field that service expects
-  [ZOOM_URL]            → recurring Zoom meeting link
-  [ZOOM_TIME]           → e.g. "09:00 PT / 12:00 ET / 16:00 UTC"
-  [CONTACT_EMAIL]       → e.g. hello@openbookmap.org
-  [GITHUB_URL]          → repo URL, or remove the GitHub link entirely
-  =====================================================================
--->
+      <p class="lede">
+        <span class="drop">W</span>e are building an open, community-made map of every used
+        bookstore in the world — and, shelf by shelf, a searchable index of the books on their
+        shelves. Built on the <em>OpenStreetMap</em> ecosystem, in the spirit of
+        <em>OpenSkiMap</em>. Free to use. Free to contribute. Forever.
+      </p>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400&display=swap" rel="stylesheet">
+      <section>
+        <div class="sec-label"><span>The Idea</span><span class="num">I.</span></div>
+        <h2>Find the book before you drive two hours to the shop.</h2>
+        <p>
+          Used bookstores are one of the last great analog pleasures — and one of the worst for
+          discovery. You can't search their shelves from your phone. You drive across town on a
+          hunch. Sometimes you find a treasure. Most times you don't.
+        </p>
+        <p>
+          OpenBookMap is the shared index we've all been missing. Contributors drop a pin on a shop,
+          snap a few photos of the shelves, and our system turns those photos into a searchable
+          catalog. Next traveler searches a title — and knows exactly which shop, in which city, on
+          which shelf, to walk into.
+        </p>
+      </section>
 
-<style>
-  :root {
-    --paper:        #f4ecd8;
-    --paper-deep:   #ebe1c8;
-    --ink:          #1a1613;
-    --ink-soft:     #3a332c;
-    --rule:         #1a16131a;
-    --stamp:        #a8321c;
-    --stamp-deep:   #7a2415;
-    --accent:       #2a4d3a;
-    --card:         #fbf5e4;
-    --shadow:       0 1px 0 #00000008, 0 2px 4px #00000010;
-  }
+      <section>
+        <div class="sec-label"><span>How It Works</span><span class="num">II.</span></div>
+        <div class="plan">
+          <div class="card">
+            <div class="step">Step 01</div>
+            <h3>Map the shop</h3>
+            <p>
+              Contributors add used bookstores to OpenStreetMap — name, hours, a short description.
+              Every shop gets a pin on our map.
+            </p>
+          </div>
+          <div class="card">
+            <div class="step">Step 02</div>
+            <h3>Photograph the shelves</h3>
+            <p>
+              Walk in, snap spines, upload. No special gear. A phone is enough. Photos stay linked
+              to their shop and shelf.
+            </p>
+          </div>
+          <div class="card">
+            <div class="step">Step 03</div>
+            <h3>Extract the titles</h3>
+            <p>
+              Our pipeline turns shelf photos into a list of titles and authors — searchable in the
+              browser, in seconds, worldwide.
+            </p>
+          </div>
+          <div class="card">
+            <div class="step">Step 04</div>
+            <h3>Search the world</h3>
+            <p>
+              Looking for a first-edition <em>Calvino</em>? Find the three shops that have one — and
+              plan your next detour.
+            </p>
+          </div>
+        </div>
+      </section>
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+      <section>
+        <div class="sec-label"><span>Progress Report</span><span class="num">III.</span></div>
+        <h2>Where we are today.</h2>
+        <ul class="progress-list">
+          <li>
+            <span class="tag done">Done</span>
+            <span class="what">Concept, scope, and principles — simple, open, fast.</span>
+            <span class="meta">v0.1</span>
+          </li>
+          <li>
+            <span class="tag now">Now</span>
+            <span class="what"
+              >Full-stack rebuild on Vite: shared components, migrations, GitHub Actions.</span
+            >
+            <span class="meta">this month</span>
+          </li>
+          <li>
+            <span class="tag next">Next</span>
+            <span class="what"
+              >Smarter OCR (vision-model fallback when Tesseract's confidence is low).</span
+            >
+            <span class="meta">soon</span>
+          </li>
+          <li>
+            <span class="tag next">Next</span>
+            <span class="what">Global fuzzy search across every shop and every book title.</span>
+            <span class="meta">later</span>
+          </li>
+        </ul>
 
-  html { scroll-behavior: smooth; }
+        <div class="iterations">
+          <div class="iterations-label">Try the iterations →</div>
+          <div class="iteration-buttons" data-iterations></div>
+        </div>
+      </section>
 
-  body {
-    font-family: 'Fraunces', Georgia, serif;
-    font-optical-sizing: auto;
-    background-color: var(--paper);
-    background-image:
-      radial-gradient(#00000005 1px, transparent 1px),
-      radial-gradient(#00000008 1px, transparent 1px);
-    background-size: 3px 3px, 7px 7px;
-    background-position: 0 0, 1px 2px;
-    color: var(--ink);
-    line-height: 1.55;
-    font-size: 17px;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-  }
+      <section>
+        <div class="sec-label"><span>Get Involved</span><span class="num">IV.</span></div>
+        <div class="involve">
+          <div>
+            <h3>Join the mailing list.</h3>
+            <p>
+              Occasional notes on progress, new features, and how to contribute. No spam, no
+              tracking. Unsubscribe with one click.
+            </p>
+            <form class="signup" id="signup-form">
+              <input
+                type="email"
+                id="signup-email"
+                placeholder="you@example.com"
+                required
+                autocomplete="email"
+              />
+              <button type="submit">Subscribe</button>
+            </form>
+            <div class="consent" id="signup-consent">
+              By subscribing you agree to receive project updates.
+            </div>
+          </div>
 
-  /* ——— Layout ——— */
-  .wrap {
-    max-width: 920px;
-    margin: 0 auto;
-    padding: 40px 28px 80px;
-  }
+          <div class="zoom-card">
+            <h3>Jump on the daily call.</h3>
+            <p>
+              We meet every day — contributors, readers, booksellers, curious lurkers. Drop in, say
+              hello, pitch an idea, or just listen.
+            </p>
+            <div class="zoom-time">Daily · 10:00 AM PST</div>
+            <a
+              class="btn stamp"
+              href="https://us02web.zoom.us/j/4639378882"
+              target="_blank"
+              rel="noopener"
+              >Open Zoom Room →</a
+            >
+          </div>
+        </div>
+      </section>
 
-  /* ——— Masthead ——— */
-  header.mast {
-    border-top: 3px double var(--ink);
-    border-bottom: 3px double var(--ink);
-    padding: 22px 0 18px;
-    margin-bottom: 48px;
-    text-align: center;
-    position: relative;
-  }
-  header.mast::before,
-  header.mast::after {
-    content: "❦";
-    position: absolute;
-    font-size: 18px;
-    color: var(--ink);
-    top: 50%;
-    transform: translateY(-50%);
-    opacity: 0.5;
-  }
-  header.mast::before { left: 0; }
-  header.mast::after  { right: 0; }
-
-  .eyebrow {
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-    margin-bottom: 10px;
-  }
-  h1.title {
-    font-size: clamp(40px, 7vw, 68px);
-    font-weight: 800;
-    line-height: 0.98;
-    letter-spacing: -0.02em;
-    font-style: italic;
-  }
-  h1.title .amp {
-    font-weight: 400;
-    font-style: italic;
-    opacity: 0.55;
-    margin: 0 4px;
-  }
-  .subtitle {
-    margin-top: 14px;
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 12px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-  }
-
-  /* ——— Stamp ——— */
-  .stamp {
-    position: absolute;
-    top: -14px;
-    right: -6px;
-    transform: rotate(8deg);
-    border: 2px solid var(--stamp);
-    color: var(--stamp);
-    padding: 5px 10px 4px;
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    background: var(--paper);
-    border-radius: 2px;
-    opacity: 0.9;
-  }
-  .stamp::before {
-    content: "";
-    position: absolute;
-    inset: 3px;
-    border: 1px solid var(--stamp);
-    border-radius: 1px;
-    pointer-events: none;
-  }
-
-  /* ——— Lede ——— */
-  .lede {
-    font-size: clamp(20px, 2.4vw, 26px);
-    line-height: 1.45;
-    max-width: 38em;
-    margin: 0 auto 56px;
-    text-align: center;
-    color: var(--ink-soft);
-  }
-  .lede em {
-    color: var(--ink);
-    font-style: italic;
-  }
-  .lede .drop {
-    float: left;
-    font-size: 3.4em;
-    line-height: 0.85;
-    padding: 6px 8px 0 0;
-    font-weight: 800;
-    color: var(--stamp);
-  }
-
-  /* ——— Sections ——— */
-  section {
-    margin-bottom: 56px;
-  }
-  .sec-label {
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-    padding-bottom: 10px;
-    margin-bottom: 22px;
-    border-bottom: 1px solid var(--rule);
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-  }
-  .sec-label .num { opacity: 0.5; }
-
-  h2 {
-    font-size: clamp(26px, 3.4vw, 34px);
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin-bottom: 18px;
-    line-height: 1.2;
-  }
-
-  p + p { margin-top: 14px; }
-
-  /* ——— The plan grid ——— */
-  .plan {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 18px;
-    margin-top: 24px;
-  }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--rule);
-    padding: 22px 22px 24px;
-    box-shadow: var(--shadow);
-    position: relative;
-  }
-  .card .step {
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    color: var(--stamp);
-    margin-bottom: 10px;
-  }
-  .card h3 {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    line-height: 1.25;
-  }
-  .card p {
-    font-size: 15px;
-    color: var(--ink-soft);
-    line-height: 1.5;
-  }
-
-  /* ——— Progress ——— */
-  .progress-list {
-    list-style: none;
-    border-top: 1px solid var(--rule);
-  }
-  .progress-list li {
-    padding: 14px 0;
-    border-bottom: 1px solid var(--rule);
-    display: grid;
-    grid-template-columns: 90px 1fr auto;
-    gap: 16px;
-    align-items: baseline;
-  }
-  .progress-list .tag {
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    padding: 3px 7px;
-    border: 1px solid currentColor;
-    border-radius: 2px;
-    text-transform: uppercase;
-    text-align: center;
-    justify-self: start;
-    align-self: center;
-  }
-  .tag.done    { color: var(--accent); }
-  .tag.now     { color: var(--stamp); }
-  .tag.next    { color: var(--ink-soft); }
-  .progress-list .what { font-size: 16px; }
-  .progress-list .meta {
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 11px;
-    color: var(--ink-soft);
-  }
-
-  /* ——— Iteration buttons ——— */
-  .iterations {
-    margin-top: 28px;
-    padding-top: 24px;
-    border-top: 1px solid var(--rule);
-  }
-  .iterations-label {
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-    margin-bottom: 14px;
-  }
-  .iteration-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .iter-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px 10px 12px;
-    background: var(--card);
-    border: 1px solid var(--ink);
-    color: var(--ink);
-    text-decoration: none;
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    border-radius: 2px;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
-    box-shadow: var(--shadow);
-  }
-  .iter-btn .n {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 22px;
-    height: 22px;
-    padding: 0 5px;
-    background: var(--ink);
-    color: var(--paper);
-    font-size: 10px;
-    letter-spacing: 0.04em;
-    border-radius: 2px;
-    transition: background 0.15s, color 0.15s;
-  }
-  .iter-btn:hover {
-    background: var(--stamp);
-    color: var(--paper);
-    border-color: var(--stamp);
-  }
-  .iter-btn:hover .n {
-    background: var(--paper);
-    color: var(--stamp);
-  }
-
-  /* ——— Get involved ——— */
-  .involve {
-    background: var(--card);
-    border: 1px solid var(--rule);
-    padding: 36px 32px;
-    box-shadow: var(--shadow);
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-  }
-  .involve h3 {
-    font-size: 22px;
-    font-weight: 600;
-    margin-bottom: 10px;
-  }
-  .involve p {
-    font-size: 15px;
-    color: var(--ink-soft);
-    margin-bottom: 16px;
-  }
-  .involve .divider {
-    display: none;
-  }
-
-  form.signup {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  form.signup input[type="email"] {
-    flex: 1 1 180px;
-    padding: 11px 13px;
-    border: 1px solid var(--ink);
-    background: var(--paper);
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 13px;
-    color: var(--ink);
-    border-radius: 2px;
-  }
-  form.signup input[type="email"]:focus {
-    outline: 2px solid var(--stamp);
-    outline-offset: 1px;
-  }
-  form.signup button {
-    padding: 11px 18px;
-    background: var(--ink);
-    color: var(--paper);
-    border: 1px solid var(--ink);
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 12px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    cursor: pointer;
-    border-radius: 2px;
-    transition: background 0.15s, color 0.15s;
-  }
-  form.signup button:hover {
-    background: var(--stamp);
-    border-color: var(--stamp);
-  }
-  .consent {
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 11px;
-    color: var(--ink-soft);
-    margin-top: 10px;
-  }
-
-  .zoom-card {
-    border-left: 2px solid var(--ink);
-    padding-left: 24px;
-  }
-  .zoom-time {
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 13px;
-    letter-spacing: 0.08em;
-    background: var(--paper);
-    display: inline-block;
-    padding: 6px 10px;
-    border: 1px dashed var(--ink);
-    margin-bottom: 14px;
-  }
-  a.btn {
-    display: inline-block;
-    padding: 11px 18px;
-    background: var(--stamp);
-    color: var(--paper);
-    text-decoration: none;
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 12px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    border-radius: 2px;
-    border: 1px solid var(--stamp-deep);
-    transition: background 0.15s;
-  }
-  a.btn:hover { background: var(--stamp-deep); }
-
-  /* ——— FAQ ——— */
-  details {
-    border-bottom: 1px solid var(--rule);
-    padding: 14px 0;
-  }
-  details summary {
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 17px;
-    list-style: none;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  details summary::-webkit-details-marker { display: none; }
-  details summary::after {
-    content: "+";
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-weight: 400;
-    opacity: 0.5;
-    font-size: 20px;
-    transition: transform 0.2s;
-  }
-  details[open] summary::after { content: "−"; }
-  details p {
-    margin-top: 10px;
-    font-size: 15px;
-    color: var(--ink-soft);
-    max-width: 60ch;
-  }
-
-  /* ——— Footer ——— */
-  footer {
-    margin-top: 80px;
-    padding-top: 24px;
-    border-top: 3px double var(--ink);
-    font-family: 'DM Mono', ui-monospace, monospace;
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    color: var(--ink-soft);
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
-  footer a {
-    color: var(--ink);
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
-  }
-  footer a:hover { color: var(--stamp); }
-
-  /* ——— Responsive ——— */
-  @media (max-width: 640px) {
-    .wrap { padding: 28px 20px 60px; }
-    .involve {
-      grid-template-columns: 1fr;
-      gap: 32px;
-      padding: 28px 22px;
-    }
-    .zoom-card {
-      border-left: none;
-      border-top: 1px solid var(--rule);
-      padding-left: 0;
-      padding-top: 28px;
-    }
-    .progress-list li {
-      grid-template-columns: 1fr;
-      gap: 4px;
-    }
-    .progress-list .meta { justify-self: start; }
-    header.mast::before, header.mast::after { display: none; }
-  }
-
-  /* ——— Subtle entry animation ——— */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  header.mast, .lede, section, footer {
-    animation: fadeUp 0.6s ease-out both;
-  }
-  .lede     { animation-delay: 0.1s; }
-  section:nth-of-type(1) { animation-delay: 0.2s; }
-  section:nth-of-type(2) { animation-delay: 0.3s; }
-  section:nth-of-type(3) { animation-delay: 0.4s; }
-  section:nth-of-type(4) { animation-delay: 0.5s; }
-  footer    { animation-delay: 0.6s; }
-</style>
-</head>
-<body>
-
-<div class="wrap">
-
-  <header class="mast">
-    <div class="stamp">Work&nbsp;in&nbsp;Progress</div>
-    <div class="eyebrow">Est. MMXXVI · Vol. I · No. 1</div>
-    <h1 class="title">OpenBookMap</h1>
-    <div class="subtitle">A global atlas <span style="opacity:.5">·</span> of used bookstores <span style="opacity:.5">·</span> and the books inside them</div>
-    <div style="margin-top:22px">
-      <a href="map.html" style="display:inline-block;padding:10px 18px;background:var(--stamp);color:var(--paper);text-decoration:none;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;border-radius:2px;border:1px solid var(--stamp-deep)">Open the Map →</a>
+      <section>
+        <div class="sec-label"><span>Common Questions</span><span class="num">V.</span></div>
+        <div data-faq></div>
+      </section>
     </div>
-  </header>
 
-  <p class="lede">
-    <span class="drop">W</span>e are building an open, community-made map of every used bookstore in the world — and, shelf by shelf, a searchable index of the books on their shelves. Built on the <em>OpenStreetMap</em> ecosystem, in the spirit of <em>OpenSkiMap</em>. Free to use. Free to contribute. Forever.
-  </p>
+    <footer data-footer></footer>
 
-  <section>
-    <div class="sec-label"><span>The Idea</span><span class="num">I.</span></div>
-    <h2>Find the book before you drive two hours to the shop.</h2>
-    <p>Used bookstores are one of the last great analog pleasures — and one of the worst for discovery. You can't search their shelves from your phone. You drive across town on a hunch. Sometimes you find a treasure. Most times you don't.</p>
-    <p>OpenBookMap is the shared index we've all been missing. Contributors drop a pin on a shop, snap a few photos of the shelves, and our system turns those photos into a searchable catalog. Next traveler searches a title — and knows exactly which shop, in which city, on which shelf, to walk into.</p>
-  </section>
-
-  <section>
-    <div class="sec-label"><span>How It Works</span><span class="num">II.</span></div>
-    <div class="plan">
-      <div class="card">
-        <div class="step">Step 01</div>
-        <h3>Map the shop</h3>
-        <p>Contributors add used bookstores to OpenStreetMap — name, hours, a short description. Every shop gets a pin on our map.</p>
-      </div>
-      <div class="card">
-        <div class="step">Step 02</div>
-        <h3>Photograph the shelves</h3>
-        <p>Walk in, snap spines, upload. No special gear. A phone is enough. Photos stay linked to their shop and shelf.</p>
-      </div>
-      <div class="card">
-        <div class="step">Step 03</div>
-        <h3>Extract the titles</h3>
-        <p>Our pipeline turns shelf photos into a list of titles and authors — searchable in the browser, in seconds, worldwide.</p>
-      </div>
-      <div class="card">
-        <div class="step">Step 04</div>
-        <h3>Search the world</h3>
-        <p>Looking for a first-edition <em>Calvino</em>? Find the three shops that have one — and plan your next detour.</p>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <div class="sec-label"><span>Progress Report</span><span class="num">III.</span></div>
-    <h2>Where we are today.</h2>
-    <ul class="progress-list">
-      <li>
-        <span class="tag done">Done</span>
-        <span class="what">Concept, scope, and principles — simple, open, fast.</span>
-        <span class="meta">v0.1</span>
-      </li>
-      <li>
-        <span class="tag now">Now</span>
-        <span class="what">Choosing the stack: OSM + Overpass for shop data, photo pipeline for shelves.</span>
-        <span class="meta">this month</span>
-      </li>
-      <li>
-        <span class="tag next">Next</span>
-        <span class="what">A bare-bones map and upload form. 50 shops seeded to start.</span>
-        <span class="meta">soon</span>
-      </li>
-      <li>
-        <span class="tag next">Next</span>
-        <span class="what">Searchable inventory from shelf photos. Open API from day one.</span>
-        <span class="meta">later</span>
-      </li>
-    </ul>
-
-    <div class="iterations">
-      <div class="iterations-label">Try the iterations →</div>
-      <div class="iteration-buttons">
-        <a class="iter-btn" href="https://www.openshelfmap.org/"      target="_blank" rel="noopener"><span class="n">01</span>Iteration&nbsp;1</a>
-        <a class="iter-btn" href="https://www.openshelfmap.org/ocr/"  target="_blank" rel="noopener"><span class="n">02</span>Iteration&nbsp;2</a>
-        <a class="iter-btn" href="https://www.openshelfmap.org/osm/"  target="_blank" rel="noopener"><span class="n">03</span>Iteration&nbsp;3</a>
-        <a class="iter-btn" href="https://www.openshelfmap.org/"      target="_blank" rel="noopener"><span class="n">04</span>Iteration&nbsp;4</a>
-        <a class="iter-btn" href="https://www.openshelfmap.org/demo/" target="_blank" rel="noopener"><span class="n">05</span>Iteration&nbsp;5</a>
-        <a class="iter-btn" href="https://www.openshelfmap.org/mvp/"  target="_blank" rel="noopener"><span class="n">06</span>Iteration&nbsp;6</a>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <div class="sec-label"><span>Get Involved</span><span class="num">IV.</span></div>
-    <div class="involve">
-      <div>
-        <h3>Join the mailing list.</h3>
-        <p>Occasional notes on progress, new features, and how to contribute. No spam, no tracking. Unsubscribe with one click.</p>
-        <!-- Temporary: emails Adam directly until a mailing list provider is wired up.
-             Replace with your Buttondown/Mailchimp/Substack form action when ready. -->
-        <form class="signup" id="signup-form" onsubmit="return handleSignup(event)">
-          <input
-            type="email"
-            id="signup-email"
-            placeholder="you@example.com"
-            required
-            autocomplete="email"
-          />
-          <button type="submit">Subscribe</button>
-        </form>
-        <div class="consent" id="signup-consent">By subscribing you agree to receive project updates.</div>
-        <script>
-          function handleSignup(e) {
-            e.preventDefault();
-            const email = document.getElementById('signup-email').value.trim();
-            if (!email) return false;
-            const subject = encodeURIComponent('OpenBookMap mailing list — subscribe');
-            const body = encodeURIComponent('Please add this address to the OpenBookMap mailing list: ' + email);
-            window.location.href = 'mailto:adam@openbookmap.org?subject=' + subject + '&body=' + body;
-            document.getElementById('signup-consent').textContent = 'Thanks — your email app should open now. Send the message to complete signup.';
-            return false;
-          }
-        </script>
-      </div>
-
-      <div class="zoom-card">
-        <h3>Jump on the daily call.</h3>
-        <p>We meet every day — contributors, readers, booksellers, curious lurkers. Drop in, say hello, pitch an idea, or just listen.</p>
-        <div class="zoom-time">Daily · 10:00 AM PST</div>
-        <a class="btn" href="https://us02web.zoom.us/j/4639378882" target="_blank" rel="noopener">Open Zoom Room →</a>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <div class="sec-label"><span>Common Questions</span><span class="num">V.</span></div>
-
-    <details>
-      <summary>Why build on OpenStreetMap?</summary>
-      <p>OSM is the world's best open geographic database, maintained by a global community. It already tags used bookstores. Building on top of it means we don't reinvent the map — and our bookstore data enriches the commons for everyone.</p>
-    </details>
-    <details>
-      <summary>Who owns the data?</summary>
-      <p>Nobody. Everybody. Shop locations derived from OSM carry the ODbL license. Photos and inventories contributed here will be released under a compatible open license so anyone can fork, remix, or build on the project.</p>
-    </details>
-    <details>
-      <summary>How accurate is the shelf scanning?</summary>
-      <p>We're evaluating options — from in-browser OCR to vision models. Accuracy depends on photo quality, spine legibility, and language. Community corrections will close the gap. Exact titles always beat approximate ones.</p>
-    </details>
-    <details>
-      <summary>Is this only for English-language books?</summary>
-      <p>No. The system is language-agnostic from day one. Tokyo, Buenos Aires, Reykjavík — if there's a used bookstore with a shelf, it belongs on the map.</p>
-    </details>
-    <details>
-      <summary>Are you a business?</summary>
-      <p>No. This is a volunteer project. If it grows, it will stay non-commercial, open-source, and community-governed.</p>
-    </details>
-  </section>
-
-  <footer>
-    <div>
-      OpenBookMap · A work in progress · © MMXXVI, released under open licenses
-    </div>
-    <div>
-      <a href="mailto:adam@openbookmap.org">adam@openbookmap.org</a>
-      &nbsp;·&nbsp;
-      <a href="https://us02web.zoom.us/j/4639378882" target="_blank" rel="noopener">Daily Zoom · 10am PST</a>
-    </div>
-  </footer>
-
-</div>
-
-</body>
+    <script type="module" src="/src/pages/landing.js"></script>
+  </body>
 </html>

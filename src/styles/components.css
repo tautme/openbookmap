@@ -1,0 +1,214 @@
+/* Shared components: topbar, buttons, cards, stamps, forms. */
+
+/* ——— Topbar ——— */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  height: var(--topbar-height);
+}
+.topbar .brand {
+  font-style: italic;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  color: var(--ink);
+}
+.topbar .brand .dot {
+  color: var(--stamp);
+}
+.topbar nav {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.topbar nav a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+.topbar nav a:hover,
+.topbar nav a.active {
+  color: var(--ink);
+  border-color: var(--rule);
+}
+.topbar nav a.cta {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.topbar nav a.cta:hover {
+  background: var(--stamp);
+  border-color: var(--stamp);
+}
+@media (max-width: 600px) {
+  .topbar nav a:not(.cta):not(.always-show) {
+    display: none;
+  }
+}
+
+/* ——— Buttons ——— */
+.btn {
+  display: inline-block;
+  padding: 11px 20px;
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.btn:hover {
+  background: var(--stamp);
+  border-color: var(--stamp);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn.stamp {
+  background: var(--stamp);
+  border-color: var(--stamp-deep);
+}
+.btn.stamp:hover {
+  background: var(--stamp-deep);
+}
+.btn.secondary {
+  background: transparent;
+  color: var(--ink-soft);
+  border-color: var(--rule);
+  padding: 8px 14px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+.btn.secondary:hover {
+  color: var(--stamp);
+  border-color: var(--stamp);
+  background: transparent;
+}
+
+/* ——— Cards ——— */
+.card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  padding: 22px 22px 24px;
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-sm);
+}
+
+/* ——— Form controls ——— */
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+}
+.input:focus {
+  outline: 2px solid var(--stamp);
+  outline-offset: 1px;
+}
+
+/* ——— Inline status / error banners ——— */
+.status {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--rule);
+  margin: 12px 0;
+}
+.status.error {
+  color: var(--stamp);
+  border-color: var(--stamp);
+  background: #fbeae6;
+}
+.status.success {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: #e8efe9;
+}
+
+/* ——— Section labels (editorial) ——— */
+.sec-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding-bottom: 10px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.sec-label .num {
+  opacity: 0.5;
+}
+
+/* ——— Footer ——— */
+footer.site-footer {
+  margin-top: 80px;
+  padding: 24px 18px;
+  border-top: 3px double var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  max-width: var(--content-max);
+  margin-left: auto;
+  margin-right: auto;
+}
+footer.site-footer a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+footer.site-footer a:hover {
+  color: var(--stamp);
+}
+
+/* ——— Empty states ——— */
+.empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ink-soft);
+  font-style: italic;
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius-sm);
+}

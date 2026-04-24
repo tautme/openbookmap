@@ -1,131 +1,184 @@
 # OpenBookMap
 
-A global, open map of used bookstores — with searchable inventories built from shelf photos. Built on OpenStreetMap in the spirit of OpenSkiMap.
+A global, open map of used bookstores — with searchable inventories built from shelf photos. Built on OpenStreetMap, in the spirit of OpenSkiMap.
 
-**Stack:** Static HTML/CSS/JS (no build step) · Leaflet for maps · Overpass API for OSM data · Supabase for photos/books/auth · Tesseract.js for in-browser OCR · GitHub Pages for hosting.
-
-**Cost:** $0 to start. Supabase Pro ($25/mo) only if you grow past the free tier.
+**Live site:** [openbookmap.org](https://openbookmap.org)
 
 ---
 
-## Files
+## Stack
 
-```
-index.html     → Brochure / about page
-map.html       → The global map of used bookstores
-upload.html    → Contribute flow (sign in → upload → OCR → save)
-schema.sql     → Database schema — paste into Supabase SQL editor
-README.md      → This file
-```
+- **Build:** [Vite](https://vitejs.dev/) multi-page, static output to `dist/`.
+- **Framework:** Vanilla JS with ES modules and small HTML templates. No React/Preact — seven pages don't need a component runtime.
+- **Map:** Leaflet + `leaflet.markercluster`, CartoDB Positron tiles.
+- **Data:** Supabase (PostgreSQL + Storage + Auth) — the only backend.
+- **OCR:** Tesseract.js, lazy-loaded only on `/contribute`.
+- **Analytics:** [GoatCounter](https://www.goatcounter.com/) (cookieless, privacy-respecting).
+- **Tests:** Vitest. **Lint/format:** ESLint + Prettier.
+- **Hosting:** GitHub Pages (static), deployed via GitHub Actions.
 
----
-
-## Deployment — one-time setup
-
-### 1. Set up Supabase (5 minutes)
-
-Your project is at `https://jmikulhgpgfaarqzwrgl.supabase.co`. Now create the database tables.
-
-1. Go to [supabase.com/dashboard](https://supabase.com/dashboard) and open your project.
-2. Left sidebar → **SQL Editor** → **New query**.
-3. Open `schema.sql` from this repo. Copy the entire contents. Paste into the SQL editor.
-4. Click **Run**. You should see "Success. No rows returned."
-5. Verify: left sidebar → **Table Editor** — you should see 5 tables (`profiles`, `shops`, `photos`, `books`, `contributions`).
-6. Verify storage: left sidebar → **Storage** — you should see a bucket called `shelf-photos`.
-
-### 2. Configure Supabase auth (2 minutes)
-
-1. Left sidebar → **Authentication** → **URL Configuration**.
-2. Set **Site URL** to `https://openbookmap.org` (or your GitHub Pages URL, e.g. `https://<username>.github.io/openbookmap`).
-3. Under **Redirect URLs**, add the same URL, plus `http://localhost:8000` for local testing.
-4. Left sidebar → **Authentication** → **Providers** — confirm **Email** is enabled (it's on by default). The default settings send a "magic link" — this is what we want.
-
-### 3. Deploy to GitHub Pages (10 minutes)
-
-1. Create a new GitHub repo named `openbookmap` (public).
-2. Upload these 5 files to the root: `index.html`, `map.html`, `upload.html`, `schema.sql`, `README.md`.
-3. In the repo: **Settings → Pages**. Under "Source", choose **Deploy from a branch**, branch `main`, folder `/ (root)`. Save.
-4. Wait ~1 minute. Your site is live at `https://<username>.github.io/openbookmap/`.
-
-### 4. Point openbookmap.org at it (10 minutes, registrar-dependent)
-
-1. In your domain registrar (wherever you bought `openbookmap.org`), add these DNS records:
-   ```
-   A     @    185.199.108.153
-   A     @    185.199.109.153
-   A     @    185.199.110.153
-   A     @    185.199.111.153
-   CNAME www  <your-github-username>.github.io
-   ```
-2. In your GitHub repo: **Settings → Pages → Custom domain** → enter `openbookmap.org` → save. Check **Enforce HTTPS** once it's available (may take 15–60 minutes for GitHub to issue the cert).
-3. Update Supabase's Site URL and Redirect URLs (step 2 above) to `https://openbookmap.org` once the domain is live.
+**Cost:** $0 to start. Budget ceiling $20/mo — Supabase Pro ($25) only when we outgrow free tier.
 
 ---
 
-## Local testing
+## Pages
 
-You cannot just double-click `index.html` — Supabase auth needs a real HTTP context. Run a tiny local server:
+| Path | What it does |
+|---|---|
+| `/` | Editorial landing page with project summary, iterations, FAQ. |
+| `/map` | Full-screen Leaflet map, Overpass-queried bookstores, sliding detail panel. URL state (`?lat=&lon=&z=&shop=type/id`) is shareable. |
+| `/contribute` | Email + password auth, drag-and-drop photo upload with OCR and client-side thumbnailing. |
+| `/shop?type=node&id=123` | Permanent shareable page for one bookstore. |
+| `/search?q=...` | Fuzzy search across shop names and book titles. |
+| `/me` (and `/me.html?name=adam`) | Profile + your contributions, with delete controls. |
+| `/about` | Mission, principles, privacy. |
+| `/404.html` | Not-found page. |
+
+---
+
+## Architecture — decisions and why
+
+### Static-first, multi-page, no SPA
+Each page is a real `.html` entry that Vite bundles independently. GitHub Pages serves the files directly. No client-side router, no 404 rewrites. Shop URLs use query params (`/shop?type=node&id=123`) instead of path params (`/shop/node/123`) because the latter would require either a SPA shell or server rewrites — neither is worth the complexity at this scale.
+
+### Vanilla JS, not React/Preact
+Seven pages, mostly read-only, one heavy map, two forms. A component framework would pay for itself with reduced cognitive load only if we had shared, highly-dynamic stateful UI — we don't. The map uses Leaflet directly; panels are string-template renderers; forms are tiny.
+
+### Supabase as the only backend
+Postgres + Auth + Storage in one place, with Row Level Security enforced at the database. No custom server code to run, deploy, or patch.
+
+### Additive SQL migrations
+`supabase/migrations/0001_initial.sql` is the original schema. Every subsequent change lands in a new numbered file (`0002_...`, `0003_...`). Nothing is ever rewritten.
+
+### OCR behind an interface
+`src/ocr/index.js` exports `extractTitles(image)`. The current Tesseract provider is one implementation; a vision-LLM fallback can be added later without touching the contribute flow. See `src/ocr/README.md`.
+
+### Photo derivatives, client-side
+Every upload produces a 1600px display JPEG and a 400px thumbnail, both via `browser-image-compression`. We upload both to Supabase Storage. The map's photo grid uses the thumbnail; the lightbox uses the display size.
+
+---
+
+## Local development
+
+### Prerequisites
+Node 20+.
+
+### First run
 
 ```bash
-# Python 3
-python3 -m http.server 8000
-
-# or Node
-npx serve .
+git clone https://github.com/tautme/openbookmap.git
+cd openbookmap
+cp .env.example .env       # fill in the Supabase URL + anon key
+npm install
+npm run dev
 ```
 
-Open [http://localhost:8000](http://localhost:8000).
+Open http://localhost:5173. Each HTML file at the repo root (`/`, `/map.html`, `/contribute.html`, etc.) is its own entry point.
+
+### Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Vite dev server with HMR. |
+| `npm run build` | Static build → `dist/`. |
+| `npm run preview` | Serve `dist/` locally to verify the production build. |
+| `npm run lint` | ESLint over `src/` and `tests/`. |
+| `npm run format` | Prettier write. |
+| `npm run format:check` | Prettier check only — runs in CI. |
+| `npm test` | Vitest (unit tests for pure functions). |
+| `npm run test:watch` | Vitest in watch mode. |
 
 ---
 
-## How the app works
+## Deployment
 
-1. **Visitor lands on `index.html`.** Learns about the project. Joins the mailing list (currently a `mailto:` — swap for a real provider later). Clicks "Open the Map →".
-2. **`map.html` loads.** OSM tiles render. User pans or searches a city. When zoomed in enough, we query the Overpass API for `shop=books` + `second_hand=yes|only` nodes in the viewport and drop pins.
-3. **Click a pin.** Side panel opens. We look up that OSM ID in our Supabase `shops` table — if anyone has contributed photos or books, they appear here.
-4. **"Contribute photos →"** passes the OSM ID to `upload.html`.
-5. **`upload.html`.** User signs in via email magic link. Uploads photos. Tesseract.js runs OCR in the browser (no server cost, ~5–15 sec per photo). User edits/confirms the title list. Hits save. Photos go to Supabase Storage, titles go to the `books` table.
+### Supabase
+
+One-time:
+
+1. Create a project at [supabase.com](https://supabase.com/).
+2. Open **SQL Editor** → paste `supabase/migrations/0001_initial.sql` → run.
+3. Repeat for `0002_profiles_flags_overrides.sql`.
+4. **Authentication → URL Configuration** — set Site URL and Redirect URLs to your domain (`https://openbookmap.org`) plus `http://localhost:5173` for dev.
+5. **Authentication → Providers → Email** — make sure Email is enabled; disable magic link if you want password-only.
+6. Copy your Project URL and anon key into `.env` (local) and into GitHub repository secrets (CI).
+
+Each future schema change: add a new `NNNN_<name>.sql` file under `supabase/migrations/` and paste it into the Supabase SQL editor. Versioned, reviewable, reversible-ish.
+
+### GitHub Pages
+
+The `.github/workflows/deploy.yml` workflow runs on every push to `main`:
+
+1. Builds with Vite.
+2. Copies `CNAME` into `dist/` (preserves the custom domain).
+3. Uploads and deploys via `actions/deploy-pages`.
+
+**Required repository secrets:**
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_GOATCOUNTER_CODE` (optional — analytics)
+
+Configure in **Settings → Secrets and variables → Actions**.
+
+DNS already points `openbookmap.org` at GitHub Pages (four A records + a `www` CNAME). GitHub's auto-TLS issues a Let's Encrypt certificate.
 
 ---
 
-## Security
+## Continuous integration
 
-- **The anon key in the HTML is safe to publish.** That's what it's designed for. Supabase's Row Level Security (RLS) policies — created by `schema.sql` — control what the anon key can actually do.
-- **Current RLS policies:** anyone can read shops/photos/books. Only authenticated users can insert. Users can only update/delete their own contributions.
-- **NEVER commit or share the `service_role` key.** That bypasses RLS. If you ever paste it by mistake, rotate immediately: Supabase dashboard → Project Settings → API → "Reset service role key".
+`.github/workflows/ci.yml` runs on every PR and every push to `main`:
+
+- `npm run format:check`
+- `npm run lint`
+- `npm test`
+- `npm run build` (with placeholder env — verifies the build graph)
+
+Failing checks block merge.
 
 ---
 
-## Known limits & next steps
+## Database schema
 
-**Working now:**
-- Map with OSM used bookstores worldwide
-- Shop panel with photos + book list
-- Email sign-in, upload, OCR, confirm, save
-- CC-BY-SA attribution on photos and books
-- RLS-protected data
+See `supabase/migrations/0001_initial.sql` and `0002_profiles_flags_overrides.sql` for the source of truth. Summary:
 
-**Not yet built (good first contributions):**
-- Global text search: "find all shops with a copy of *Gravity's Rainbow*"
-- User profile page: "see everything I've contributed"
-- OCR quality: current extraction is naive; a smarter pipeline (vision-LLM fallback when OCR confidence is low) would roughly double accuracy
-- OSM account linking (OAuth)
-- Moderation tools: flag / vote-down bad entries
-- Mobile camera capture (swap to `capture="environment"` on phones)
-- A real mailing-list provider (Buttondown, Listmonk, Mailchimp)
+- **profiles** — one row per user. Adds `username` (unique), `bio`, `avatar_url`.
+- **shops** — one row per OSM shop we have contributions for. `(osm_type, osm_id)` uniqueness.
+- **photos** — one row per uploaded photo. Stores `display_path` (1600px) and `thumb_path` (400px) in Supabase Storage.
+- **books** — one row per confirmed book title. Adds `isbn`, `language` (ISO 639-1), `genre`.
+- **contributions** — append-only audit log.
+- **flags** — user-reported problems. **Reporter-only read** (plus future moderators), authenticated insert. Nobody can enumerate other users' reports.
+- **shop_overrides** — project corrections to OSM data (closed shop, better photo). One row per shop, nullable columns, public read.
+
+All tables have RLS enabled. The anon key is safe to ship — RLS is the security boundary.
+
+---
+
+## Known limitations
+
+- OCR accuracy is Tesseract-English, about 50–65% on well-lit spines. A vision-model fallback is planned.
+- Search is case-insensitive `ILIKE`, not true fuzzy search with ranking. Good enough until we see real query volume.
+- No localization — `src/lib/strings.js` is set up to make adding it easy when the international contributor community asks.
+- No mobile app. Web-only.
+- No moderator role yet — only the filer sees their flags.
+
+---
+
+## License
+
+- **Code:** MIT (see `LICENSE`).
+- **Shop locations:** derived from OpenStreetMap, ODbL.
+- **User-contributed photos:** CC-BY-SA 4.0.
+- **User-contributed title metadata:** ODbL-compatible terms so it can flow back into open data.
 
 ---
 
 ## Contributing
 
-Work in progress. The daily call is the fastest way in:
+See [CONTRIBUTING.md](./CONTRIBUTING.md). Daily Zoom at 10am PST: [us02web.zoom.us/j/4639378882](https://us02web.zoom.us/j/4639378882). Email [adam@openbookmap.org](mailto:adam@openbookmap.org).
 
-- **Zoom:** [us02web.zoom.us/j/4639378882](https://us02web.zoom.us/j/4639378882)
-- **Daily at 10:00 AM PST**
-- **Email:** [adam@openbookmap.org](mailto:adam@openbookmap.org)
+---
 
-## License
+## Privacy
 
-- **Code:** MIT.
-- **Shop locations:** derived from OpenStreetMap, ODbL.
-- **User-contributed photos and book titles:** CC-BY-SA 4.0.
+See [PRIVACY.md](./PRIVACY.md).
