@@ -1,0 +1,27 @@
+/* Design tokens — one place, re-used everywhere.
+ * Colors evoke aged paper and letterpress ink; typography pairs a warm serif
+ * (Fraunces) with a mono accent (DM Mono). Keep this list small.
+ */
+:root {
+  --paper: #f4ecd8;
+  --paper-deep: #ebe1c8;
+  --ink: #1a1613;
+  --ink-soft: #3a332c;
+  --rule: #1a16131a;
+  --stamp: #a8321c;
+  --stamp-deep: #7a2415;
+  --accent: #2a4d3a;
+  --card: #fbf5e4;
+
+  --shadow-sm: 0 1px 0 #00000008, 0 2px 4px #00000010;
+  --shadow-md: 0 2px 8px #0002;
+  --shadow-lg: -2px 0 10px #0001;
+
+  --radius-sm: 2px;
+
+  --font-serif: 'Fraunces', Georgia, serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+
+  --topbar-height: 52px;
+  --content-max: 920px;
+}

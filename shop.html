@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shop — OpenBookMap</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      .page-wrap {
+        max-width: 820px;
+        margin: 0 auto;
+        padding: calc(var(--topbar-height) + 28px) 24px 40px;
+      }
+      .page-wrap .card {
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <header data-topbar></header>
+    <div class="page-wrap" id="shop-root"></div>
+    <footer data-footer></footer>
+    <script type="module" src="/src/pages/shop.js"></script>
+  </body>
+</html>

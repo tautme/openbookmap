@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>About — OpenBookMap</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header data-topbar></header>
+    <div class="landing-wrap" style="padding-top: calc(var(--topbar-height) + 24px)">
+      <header class="mast">
+        <div class="eyebrow">About · Principles · Privacy</div>
+        <h1 class="title">About OpenBookMap</h1>
+      </header>
+
+      <section>
+        <div class="sec-label"><span>Mission</span><span class="num">I.</span></div>
+        <p>
+          OpenBookMap is a volunteer project building a global, open atlas of used bookstores and —
+          shelf by shelf — a searchable index of the books on their shelves. We lean on
+          OpenStreetMap for shop locations, Overpass for live queries, and a small community of
+          contributors who snap photos of shelves.
+        </p>
+      </section>
+
+      <section>
+        <div class="sec-label"><span>Principles</span><span class="num">II.</span></div>
+        <ul style="padding-left: 20px; line-height: 1.7; color: var(--ink-soft)">
+          <li>Open data. Open source. Forever free to use.</li>
+          <li>Respect for contributors: your photos, your credit.</li>
+          <li>No tracking, no ads, no surveillance.</li>
+          <li>Progressive enhancement. Works on slow networks. No infinite spinners.</li>
+          <li>Built in the OSM tradition — modest, legible, maintainable by one person.</li>
+        </ul>
+      </section>
+
+      <section id="privacy">
+        <div class="sec-label"><span>Privacy</span><span class="num">III.</span></div>
+        <p>
+          <strong>What we collect.</strong> Aggregate page-view counts via
+          <a href="https://www.goatcounter.com/" target="_blank" rel="noopener">GoatCounter</a>, a
+          cookieless, privacy-respecting analytics service. No IP addresses are stored. Users with
+          Do-Not-Track enabled are never counted.
+        </p>
+        <p>
+          <strong>What we do not collect.</strong> No cookies, no cross-site tracking, no
+          fingerprinting, no advertising identifiers.
+        </p>
+        <p>
+          <strong>Account data.</strong> If you sign in, we store your email address (for login) and
+          a profile row with an optional username and bio. You can delete your account at any time —
+          email <a href="mailto:adam@openbookmap.org">adam@openbookmap.org</a>.
+        </p>
+        <p>
+          <strong>Contributed content.</strong> Photos are released under CC-BY-SA 4.0, credited to
+          your account. Book-title metadata is released under ODbL-compatible terms. You can delete
+          your own contributions at any time from the <a href="/me.html">Me</a> page.
+        </p>
+      </section>
+
+      <section>
+        <div class="sec-label"><span>FAQ</span><span class="num">IV.</span></div>
+        <div data-faq></div>
+      </section>
+
+      <section>
+        <div class="sec-label"><span>Licensing</span><span class="num">V.</span></div>
+        <p style="color: var(--ink-soft)">
+          Code: MIT. Shop locations: derived from OpenStreetMap, ODbL. User-contributed photos:
+          CC-BY-SA 4.0. Repository:
+          <a href="https://github.com/tautme/openbookmap" target="_blank" rel="noopener">
+            github.com/tautme/openbookmap</a
+          >.
+        </p>
+      </section>
+    </div>
+    <footer data-footer></footer>
+    <script type="module" src="/src/pages/about.js"></script>
+  </body>
+</html>

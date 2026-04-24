@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Not found — OpenBookMap</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header data-topbar></header>
+    <div
+      style="
+        max-width: 600px;
+        margin: 0 auto;
+        padding: calc(var(--topbar-height) + 80px) 24px;
+        text-align: center;
+      "
+    >
+      <div
+        style="
+          font-family: var(--font-mono);
+          font-size: 12px;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--ink-soft);
+          margin-bottom: 12px;
+        "
+      >
+        Error · 404
+      </div>
+      <h1 style="font-size: 48px; font-weight: 800; font-style: italic; letter-spacing: -0.02em">
+        A missing shelf.
+      </h1>
+      <p style="margin: 18px 0 28px; color: var(--ink-soft)">
+        This page isn't on the map. Try the map, or start over from the landing page.
+      </p>
+      <a class="btn stamp" href="/">Back to OpenBookMap</a>
+      &nbsp;&nbsp;
+      <a class="btn" href="/map.html">Open the Map</a>
+    </div>
+    <footer data-footer></footer>
+    <script type="module" src="/src/pages/not-found.js"></script>
+  </body>
+</html>
