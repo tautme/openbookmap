@@ -21,6 +21,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@gutenye/ocr-browser": "^1.4.8",
     "@supabase/supabase-js": "^2.45.0",
     "browser-image-compression": "^2.0.2",
     "leaflet": "^1.9.4",
