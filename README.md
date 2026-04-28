@@ -12,7 +12,7 @@ A global, open map of used bookstores — with searchable inventories built from
 - **Framework:** Vanilla JS with ES modules and small HTML templates. No React/Preact — seven pages don't need a component runtime.
 - **Map:** Leaflet + `leaflet.markercluster`, CartoDB Positron tiles.
 - **Data:** Supabase (PostgreSQL + Storage + Auth) — the only backend.
-- **OCR:** Tesseract.js, lazy-loaded only on `/contribute`.
+- **OCR:** Tesseract.js, lazy-loaded only on `/contribute`. A YOLOv8n spine detector (`models/spine-yolov8n.onnx`) crops each spine before OCR runs per crop.
 - **Analytics:** [GoatCounter](https://www.goatcounter.com/) (cookieless, privacy-respecting).
 - **Tests:** Vitest. **Lint/format:** ESLint + Prettier.
 - **Hosting:** GitHub Pages (static), deployed via GitHub Actions.
@@ -151,6 +151,19 @@ See `supabase/migrations/0001_initial.sql` and `0002_profiles_flags_overrides.sq
 - **shop_overrides** — project corrections to OSM data (closed shop, better photo). One row per shop, nullable columns, public read.
 
 All tables have RLS enabled. The anon key is safe to ship — RLS is the security boundary.
+
+---
+
+## Re-training the spine detector
+
+The upload flow crops each spine with a YOLOv8n detector before running OCR per crop. To regenerate `models/spine-yolov8n.onnx`:
+
+1. Open `training/yolo_spine.ipynb` in Google Colab (runtime: T4 GPU is plenty).
+2. Paste a Roboflow API key into the indicated cell. The default dataset is `capjamesg/book-spines`; if that slug/version has moved, swap in any other "book spine" dataset from [Roboflow Universe](https://universe.roboflow.com/) via the fallback cell.
+3. Run all cells. The last cell downloads `spine-yolov8n.onnx`.
+4. Commit it to `models/spine-yolov8n.onnx` in this repo — GitHub Pages will serve it directly. The browser fetches it from `./models/spine-yolov8n.onnx` relative to `contribute.html`.
+
+If the ONNX file is missing or fails to load, the contribute flow falls back to the full-image OCR path, so nothing is broken while you iterate.
 
 ---
 
