@@ -8,28 +8,16 @@ A global, open map of used bookstores — with searchable inventories built from
 
 ## Stack
 
-<<<<<<< HEAD
-```
-index.html                   → Brochure / about page
-map.html                     → The global map of used bookstores
-upload.html                  → Contribute flow (sign in → upload → detect → OCR → save)
-schema.sql                   → Database schema — paste into Supabase SQL editor
-models/spine-yolov8n.onnx    → Fine-tuned YOLOv8n spine detector (~12 MB, runs in-browser)
-training/yolo_spine.ipynb    → Colab notebook to re-train the detector
-README.md                    → This file
-```
-=======
 - **Build:** [Vite](https://vitejs.dev/) multi-page, static output to `dist/`.
 - **Framework:** Vanilla JS with ES modules and small HTML templates. No React/Preact — seven pages don't need a component runtime.
 - **Map:** Leaflet + `leaflet.markercluster`, CartoDB Positron tiles.
 - **Data:** Supabase (PostgreSQL + Storage + Auth) — the only backend.
-- **OCR:** Tesseract.js, lazy-loaded only on `/contribute`.
+- **OCR:** Tesseract.js, lazy-loaded only on `/contribute`. A YOLOv8n spine detector (`models/spine-yolov8n.onnx`) crops each spine before OCR runs per crop.
 - **Analytics:** [GoatCounter](https://www.goatcounter.com/) (cookieless, privacy-respecting).
 - **Tests:** Vitest. **Lint/format:** ESLint + Prettier.
 - **Hosting:** GitHub Pages (static), deployed via GitHub Actions.
 
 **Cost:** $0 to start. Budget ceiling $20/mo — Supabase Pro ($25) only when we outgrow free tier.
->>>>>>> e51b03d7ad39101899f3c9279d3bfc3bf25caaf7
 
 ---
 
@@ -154,31 +142,6 @@ Failing checks block merge.
 
 See `supabase/migrations/0001_initial.sql` and `0002_profiles_flags_overrides.sql` for the source of truth. Summary:
 
-<<<<<<< HEAD
-**Not yet built (good first contributions):**
-- Global text search: "find all shops with a copy of *Gravity's Rainbow*"
-- User profile page: "see everything I've contributed"
-- OCR quality: a YOLOv8n spine detector now runs client-side before OCR (see `models/spine-yolov8n.onnx` + `training/yolo_spine.ipynb`). Next wins: oriented bounding boxes for tilted spines, a real deskew pass, and a vision-LLM fallback when per-spine OCR confidence is low.
-- OSM account linking (OAuth)
-- Moderation tools: flag / vote-down bad entries
-- Mobile camera capture (swap to `capture="environment"` on phones)
-- A real mailing-list provider (Buttondown, Listmonk, Mailchimp)
-
----
-
-## Re-training the spine detector
-
-The upload flow crops each spine with a YOLOv8n detector before running OCR per crop. To regenerate `models/spine-yolov8n.onnx`:
-
-1. Open `training/yolo_spine.ipynb` in Google Colab (runtime: T4 GPU is plenty).
-2. Paste a Roboflow API key into the indicated cell. The default dataset is `capjamesg/book-spines`; if that slug/version has moved, swap in any other "book spine" dataset from [Roboflow Universe](https://universe.roboflow.com/) via the fallback cell.
-3. Run all cells. The last cell downloads `spine-yolov8n.onnx`.
-4. Commit it to `models/spine-yolov8n.onnx` in this repo — GitHub Pages will serve it directly. The browser fetches it from `./models/spine-yolov8n.onnx` relative to `upload.html`.
-
-If the ONNX file is missing or fails to load, `upload.html` falls back to the old full-image OCR path, so nothing is broken while you iterate.
-
-## Contributing
-=======
 - **profiles** — one row per user. Adds `username` (unique), `bio`, `avatar_url`.
 - **shops** — one row per OSM shop we have contributions for. `(osm_type, osm_id)` uniqueness.
 - **photos** — one row per uploaded photo. Stores `display_path` (1600px) and `thumb_path` (400px) in Supabase Storage.
@@ -191,8 +154,20 @@ All tables have RLS enabled. The anon key is safe to ship — RLS is the securit
 
 ---
 
+## Re-training the spine detector
+
+The upload flow crops each spine with a YOLOv8n detector before running OCR per crop. To regenerate `models/spine-yolov8n.onnx`:
+
+1. Open `training/yolo_spine.ipynb` in Google Colab (runtime: T4 GPU is plenty).
+2. Paste a Roboflow API key into the indicated cell. The default dataset is `capjamesg/book-spines`; if that slug/version has moved, swap in any other "book spine" dataset from [Roboflow Universe](https://universe.roboflow.com/) via the fallback cell.
+3. Run all cells. The last cell downloads `spine-yolov8n.onnx`.
+4. Commit it to `models/spine-yolov8n.onnx` in this repo — GitHub Pages will serve it directly. The browser fetches it from `./models/spine-yolov8n.onnx` relative to `contribute.html`.
+
+If the ONNX file is missing or fails to load, the contribute flow falls back to the full-image OCR path, so nothing is broken while you iterate.
+
+---
+
 ## Known limitations
->>>>>>> e51b03d7ad39101899f3c9279d3bfc3bf25caaf7
 
 - OCR accuracy is Tesseract-English, about 50–65% on well-lit spines. A vision-model fallback is planned.
 - Search is case-insensitive `ILIKE`, not true fuzzy search with ranking. Good enough until we see real query volume.
