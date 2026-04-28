@@ -25,6 +25,11 @@ export default defineConfig({
       },
     },
   },
+  // onnxruntime-web ships its own wasm; let Vite leave it alone so the
+  // dynamic .wasm fetch (configured by `ort.env.wasm.wasmPaths`) resolves.
+  optimizeDeps: {
+    exclude: ['onnxruntime-web'],
+  },
   test: {
     environment: 'jsdom',
     globals: false,
