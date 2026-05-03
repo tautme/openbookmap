@@ -58,31 +58,34 @@ async function renderShop(osmType, osmId) {
   let contribsHtml = '';
 
   if (shop) {
-    const [{ data: photos }, { data: books }, { data: contribs }] = await Promise.all([
-      supabase
-        .from('photos')
-        .select('id, storage_path, thumb_path, shelf_label, caption, created_at')
-        .eq('shop_id', shop.id)
-        .order('created_at', { ascending: false })
-        .limit(100),
+    // Photos first — their IDs scope the contributions query below. Avoids
+    // querying `photos` twice (the previous version had a stray `await`
+    // inside Promise.all that defeated the parallelism).
+    const { data: photos } = await supabase
+      .from('photos')
+      .select('id, storage_path, thumb_path, shelf_label, caption, created_at')
+      .eq('shop_id', shop.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    const recentPhotoIds = (photos ?? []).slice(0, 50).map((p) => p.id);
+
+    const [{ data: books }, { data: contribs }] = await Promise.all([
       supabase
         .from('books')
         .select('title, author, created_at')
         .eq('shop_id', shop.id)
         .order('title')
         .limit(500),
-      supabase
-        .from('contributions')
-        .select('action, created_at, user_id')
-        .eq('target_type', 'photo')
-        .in(
-          'target_id',
-          (await supabase.from('photos').select('id').eq('shop_id', shop.id).limit(50)).data?.map(
-            (p) => p.id,
-          ) ?? [],
-        )
-        .order('created_at', { ascending: false })
-        .limit(10),
+      recentPhotoIds.length
+        ? supabase
+            .from('contributions')
+            .select('action, created_at, user_id')
+            .eq('target_type', 'photo')
+            .in('target_id', recentPhotoIds)
+            .order('created_at', { ascending: false })
+            .limit(10)
+        : Promise.resolve({ data: [] }),
     ]);
 
     if (photos?.length) {
