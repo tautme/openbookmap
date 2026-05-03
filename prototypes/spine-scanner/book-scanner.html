@@ -1,0 +1,923 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f1115" />
+    <title>Book Spine Scanner</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --surface: #181b22;
+        --surface-2: #20242d;
+        --ink: #e8eaf0;
+        --ink-soft: #9ba2b1;
+        --accent: #ff9b6b;
+        --accent-2: #6bd1ff;
+        --good: #5fd58a;
+        --bad: #f06a6a;
+        --rule: #2a2e3a;
+        --shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+        --tab-h: 60px;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        height: 100%;
+        background: var(--bg);
+        color: var(--ink);
+        font: 15px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        -webkit-text-size-adjust: 100%;
+      }
+      button, input, select { font: inherit; color: inherit; }
+      button {
+        background: var(--surface-2);
+        border: 1px solid var(--rule);
+        color: var(--ink);
+        padding: 10px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        min-height: 44px;
+      }
+      button:active { transform: translateY(1px); }
+      button.primary { background: var(--accent); color: #1a0f08; border-color: var(--accent); font-weight: 600; }
+      button.danger { color: var(--bad); border-color: var(--bad); background: transparent; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      input[type="text"], input[type="search"] {
+        background: var(--surface);
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        padding: 12px 14px;
+        width: 100%;
+        min-height: 44px;
+      }
+      input:focus { outline: 2px solid var(--accent-2); outline-offset: 1px; }
+
+      .app {
+        display: grid;
+        grid-template-rows: 1fr var(--tab-h) 28px;
+        height: 100dvh;
+      }
+      @media (min-width: 700px) {
+        .app { grid-template-rows: var(--tab-h) 1fr 28px; }
+      }
+
+      /* Tabs */
+      .tabbar {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        background: var(--surface);
+        border-top: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+        order: 2;
+      }
+      @media (min-width: 700px) {
+        .tabbar { border-top: none; order: 0; }
+      }
+      .tabbar button {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        color: var(--ink-soft);
+        font-weight: 500;
+        height: 100%;
+        font-size: 14px;
+      }
+      .tabbar button.active { color: var(--accent); border-top: 2px solid var(--accent); }
+      @media (min-width: 700px) {
+        .tabbar button.active { border-top: none; border-bottom: 2px solid var(--accent); }
+      }
+
+      /* Panels */
+      .panels { position: relative; order: 1; overflow: hidden; }
+      .panel {
+        position: absolute; inset: 0;
+        display: none;
+        flex-direction: column;
+      }
+      .panel.active { display: flex; }
+
+      /* Camera */
+      .stage {
+        position: relative;
+        background: #000;
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .stage video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: #000;
+      }
+      .stage .flash {
+        position: absolute; inset: 0;
+        background: white;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.08s;
+      }
+      .stage .flash.on { opacity: 0.55; }
+      .stage .border-flash {
+        position: absolute; inset: 0;
+        border: 6px solid transparent;
+        pointer-events: none;
+        transition: border-color 0.2s;
+      }
+      .stage .border-flash.match { border-color: var(--good); }
+
+      .stage .overlay {
+        position: absolute;
+        left: 12px; right: 12px; bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        pointer-events: none;
+      }
+      .stage .overlay > * { pointer-events: auto; }
+      .stage .pill {
+        background: rgba(0,0,0,0.55);
+        backdrop-filter: blur(6px);
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--ink);
+      }
+      .stage .pill .dot {
+        display: inline-block; width: 8px; height: 8px;
+        border-radius: 50%; margin-right: 6px; vertical-align: middle;
+        background: var(--ink-soft);
+      }
+      .stage .pill.live .dot { background: var(--good); animation: pulse 1.2s ease-in-out infinite; }
+      @keyframes pulse { 50% { opacity: 0.3; } }
+
+      .controls {
+        background: var(--surface);
+        padding: 10px 12px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        border-top: 1px solid var(--rule);
+      }
+      .controls .grow { flex: 1; min-width: 160px; }
+      .controls label { font-size: 13px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
+
+      /* Index sidebar */
+      .index-sidebar {
+        background: var(--surface);
+        border-top: 1px solid var(--rule);
+        max-height: 35dvh;
+        overflow-y: auto;
+        padding: 10px;
+      }
+      .index-sidebar .head {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 8px; font-size: 13px; color: var(--ink-soft);
+      }
+      .entry-list { display: grid; grid-template-columns: 1fr; gap: 8px; }
+      @media (min-width: 500px) {
+        .entry-list { grid-template-columns: repeat(2, 1fr); }
+      }
+      .entry {
+        display: grid;
+        grid-template-columns: 60px 1fr;
+        gap: 10px;
+        padding: 8px;
+        background: var(--surface-2);
+        border-radius: 8px;
+        border: 1px solid var(--rule);
+        cursor: pointer;
+        text-align: left;
+        align-items: start;
+      }
+      .entry img { width: 60px; height: 80px; object-fit: cover; border-radius: 4px; background: #000; }
+      .entry .meta { font-size: 12px; color: var(--ink-soft); margin-bottom: 2px; }
+      .entry .lines {
+        font-size: 13px;
+        line-height: 1.35;
+        max-height: 4.5em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+      }
+
+      /* Search */
+      .search-bar { padding: 10px; background: var(--surface); border-bottom: 1px solid var(--rule); }
+      .results { flex: 1; overflow-y: auto; padding: 10px; display: grid; gap: 10px; }
+      .result {
+        display: grid; grid-template-columns: 80px 1fr; gap: 12px;
+        background: var(--surface); border: 1px solid var(--rule);
+        padding: 10px; border-radius: 8px; cursor: pointer; text-align: left;
+      }
+      .result img { width: 80px; height: 100px; object-fit: cover; border-radius: 4px; background: #000; }
+      .result .score { font-size: 11px; color: var(--ink-soft); }
+      .result mark { background: var(--accent); color: #1a0f08; padding: 0 2px; border-radius: 2px; }
+      .empty { text-align: center; color: var(--ink-soft); padding: 32px 16px; font-style: italic; }
+
+      /* Live find */
+      .live-target {
+        padding: 10px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--rule);
+        display: flex; gap: 8px; align-items: center;
+      }
+      .live-status {
+        padding: 10px 12px;
+        background: var(--surface);
+        border-top: 1px solid var(--rule);
+        font-size: 13px;
+        color: var(--ink-soft);
+        max-height: 30dvh;
+        overflow-y: auto;
+      }
+      .live-status .matched-line { color: var(--good); font-weight: 600; margin-top: 4px; }
+
+      /* Modal */
+      .modal {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.85);
+        display: none;
+        align-items: center; justify-content: center;
+        z-index: 100;
+        padding: 16px;
+      }
+      .modal.open { display: flex; }
+      .modal .box {
+        background: var(--surface);
+        border-radius: 12px;
+        max-width: 700px; max-height: 90dvh; width: 100%;
+        overflow-y: auto;
+        padding: 16px;
+      }
+      .modal img { width: 100%; border-radius: 8px; margin-bottom: 12px; background: #000; }
+      .modal pre {
+        white-space: pre-wrap; word-break: break-word;
+        font-size: 13px; line-height: 1.5;
+        background: var(--surface-2); padding: 10px; border-radius: 6px;
+        max-height: 50dvh; overflow-y: auto;
+      }
+      .modal .close { float: right; }
+
+      /* Loading bar */
+      .loading {
+        position: fixed; top: 0; left: 0; right: 0;
+        height: 3px; background: var(--accent);
+        transform-origin: left; transform: scaleX(0);
+        transition: transform 0.2s;
+        z-index: 50;
+      }
+
+      /* Permission denied */
+      .perm-denied {
+        padding: 20px; text-align: center; color: var(--bad);
+        background: var(--surface); border: 1px solid var(--bad);
+        border-radius: 8px; margin: 16px;
+      }
+
+      /* Debug strip (always at bottom) */
+      .debug {
+        order: 3;
+        background: #000;
+        color: var(--ink-soft);
+        font: 11px/1 ui-monospace, Menlo, monospace;
+        padding: 6px 10px;
+        display: flex;
+        gap: 14px;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+      .debug span { flex-shrink: 0; }
+      .debug .k { color: var(--ink-soft); }
+      .debug .v { color: var(--ink); }
+    </style>
+  </head>
+  <body>
+    <div class="loading" id="loading"></div>
+    <div class="app">
+      <div class="panels" id="panels">
+        <!-- Index mode -->
+        <div class="panel active" data-panel="index">
+          <div class="stage">
+            <video id="cam-index" playsinline muted autoplay></video>
+            <div class="flash" id="flash-index"></div>
+            <div class="overlay">
+              <span class="pill" id="status-index"><span class="dot"></span>idle</span>
+            </div>
+          </div>
+          <div class="controls">
+            <button class="primary" id="start-index" type="button">Start camera</button>
+            <button id="capture-index" type="button" disabled>Capture now</button>
+            <label><input type="checkbox" id="auto-index" checked /> Auto every 2 s</label>
+            <span class="grow"></span>
+          </div>
+          <div class="index-sidebar">
+            <div class="head">
+              <span>Indexed: <strong id="entry-count">0</strong></span>
+              <button class="danger" id="clear-index" type="button">Clear index</button>
+            </div>
+            <div class="entry-list" id="entry-list"></div>
+          </div>
+        </div>
+
+        <!-- Search mode -->
+        <div class="panel" data-panel="search">
+          <div class="search-bar">
+            <input type="search" id="search-input" placeholder="Search title, author, any keyword…" autocomplete="off" />
+          </div>
+          <div class="results" id="results">
+            <div class="empty">Type to search across <span id="search-corpus-size">0</span> indexed lines.</div>
+          </div>
+        </div>
+
+        <!-- Live find -->
+        <div class="panel" data-panel="live">
+          <div class="live-target">
+            <input type="text" id="live-target" placeholder="Find this on a shelf… e.g. Calvino" autocomplete="off" />
+            <button class="primary" id="start-live" type="button">Start</button>
+          </div>
+          <div class="stage">
+            <video id="cam-live" playsinline muted autoplay></video>
+            <div class="border-flash" id="border-live"></div>
+            <div class="overlay">
+              <span class="pill" id="status-live"><span class="dot"></span>idle</span>
+            </div>
+          </div>
+          <div class="live-status" id="live-status">Enter a target above and tap Start.</div>
+        </div>
+      </div>
+
+      <nav class="tabbar" id="tabbar">
+        <button data-tab="index" class="active" type="button">Index</button>
+        <button data-tab="search" type="button">Search</button>
+        <button data-tab="live" type="button">Find</button>
+      </nav>
+
+      <div class="debug" id="debug">
+        <span><span class="k">ocr:</span> <span class="v" id="dbg-ocr">—</span></span>
+        <span><span class="k">last:</span> <span class="v" id="dbg-last">—</span></span>
+        <span><span class="k">queue:</span> <span class="v" id="dbg-queue">0</span></span>
+        <span><span class="k">fps:</span> <span class="v" id="dbg-fps">—</span></span>
+        <span><span class="k">entries:</span> <span class="v" id="dbg-entries">0</span></span>
+      </div>
+    </div>
+
+    <div class="modal" id="modal" role="dialog" aria-modal="true">
+      <div class="box">
+        <button class="close" id="modal-close" type="button">Close</button>
+        <h3 id="modal-title" style="margin-bottom: 8px"></h3>
+        <img id="modal-img" alt="" />
+        <pre id="modal-text"></pre>
+      </div>
+    </div>
+
+    <!-- Vendored libs -->
+    <script src="vendor/tesseract/dist/tesseract.min.js"></script>
+    <script type="module">
+      import Fuse from './vendor/fuse/dist/fuse.min.mjs';
+      import { get, set, del, keys, clear } from './vendor/idb/dist/index.js';
+
+      // ——— DOM refs ————————————————————————————————————————————————
+      const $ = (id) => document.getElementById(id);
+      const tabbar = $('tabbar');
+      const panels = document.querySelectorAll('.panel');
+      const camIndex = $('cam-index');
+      const camLive = $('cam-live');
+      const flashIndex = $('flash-index');
+      const borderLive = $('border-live');
+      const statusIndex = $('status-index');
+      const statusLive = $('status-live');
+      const startIndexBtn = $('start-index');
+      const captureBtn = $('capture-index');
+      const autoBox = $('auto-index');
+      const clearBtn = $('clear-index');
+      const entryList = $('entry-list');
+      const entryCount = $('entry-count');
+      const searchInput = $('search-input');
+      const resultsEl = $('results');
+      const corpusSize = $('search-corpus-size');
+      const liveTarget = $('live-target');
+      const startLiveBtn = $('start-live');
+      const liveStatusEl = $('live-status');
+      const modal = $('modal');
+      const modalImg = $('modal-img');
+      const modalText = $('modal-text');
+      const modalTitle = $('modal-title');
+      const modalClose = $('modal-close');
+      const loadingBar = $('loading');
+      const dbg = {
+        ocr: $('dbg-ocr'),
+        last: $('dbg-last'),
+        queue: $('dbg-queue'),
+        fps: $('dbg-fps'),
+        entries: $('dbg-entries'),
+      };
+
+      // ——— Constants ————————————————————————————————————————————————
+      const ROTATIONS = [0, 90, 270];
+      const MIN_LINE_CHARS = 3;
+      const MIN_WORD_CONF = 50; // Tesseract confidence is 0–100
+      const FUSE_THRESHOLD = 0.4;
+      const LIVE_INTERVAL_MS = 1500;
+      const AUTO_INTERVAL_MS = 2000;
+      const THUMB_WIDTH = 120;
+      const ENTRY_KEY_PREFIX = 'entry:';
+
+      // ——— Tesseract worker (lazy) ———————————————————————————————————
+      let workerPromise = null;
+      let workerReady = false;
+      function getWorker() {
+        if (workerPromise) return workerPromise;
+        setLoading(0.05);
+        workerPromise = (async () => {
+          // v5 createWorker(language, oem, options)
+          const w = await Tesseract.createWorker('eng', 1, {
+            workerPath: './vendor/tesseract/dist/worker.min.js',
+            corePath: './vendor/tesseract-core',
+            langPath: './vendor/lang',
+            logger: (m) => {
+              if (m.status && m.progress != null) setLoading(m.progress);
+            },
+          });
+          await w.setParameters({
+            tessedit_pageseg_mode: '6', // single uniform block of text
+          });
+          setLoading(1);
+          workerReady = true;
+          return w;
+        })();
+        return workerPromise;
+      }
+
+      function setLoading(p) {
+        loadingBar.style.transform = `scaleX(${p})`;
+        if (p >= 1) {
+          setTimeout(() => { loadingBar.style.transform = 'scaleX(0)'; }, 400);
+        }
+      }
+
+      // ——— Camera ——————————————————————————————————————————————————
+      // iOS Safari requires a user gesture before getUserMedia. Both Start
+      // buttons satisfy that. `playsinline` and `muted` are set in the markup.
+      let activeStream = null;
+      async function attachCamera(videoEl) {
+        if (activeStream) {
+          activeStream.getTracks().forEach((t) => t.stop());
+          activeStream = null;
+        }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false,
+          });
+          activeStream = stream;
+          videoEl.srcObject = stream;
+          await videoEl.play().catch(() => { /* iOS may resolve play() differently */ });
+          return true;
+        } catch (err) {
+          showPermDenied(videoEl, err);
+          return false;
+        }
+      }
+      function showPermDenied(videoEl, err) {
+        const stage = videoEl.closest('.stage');
+        const msg = document.createElement('div');
+        msg.className = 'perm-denied';
+        msg.textContent =
+          err && err.name === 'NotAllowedError'
+            ? 'Camera permission denied. Tap the lock icon in the address bar and allow camera access.'
+            : `Camera unavailable: ${err && err.message ? err.message : 'unknown error'}`;
+        stage.appendChild(msg);
+      }
+
+      // ——— Frame capture + rotation ———————————————————————————————
+      // Drop-frame backpressure for live mode: if an OCR call is in-flight
+      // we skip the next frame instead of queueing.
+      let inflight = false;
+      let queueDepth = 0;
+
+      function frameToCanvas(videoEl) {
+        const w = videoEl.videoWidth, h = videoEl.videoHeight;
+        if (!w || !h) return null;
+        const C = typeof OffscreenCanvas !== 'undefined' ? OffscreenCanvas : null;
+        const canvas = C ? new C(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h });
+        canvas.getContext('2d').drawImage(videoEl, 0, 0, w, h);
+        return canvas;
+      }
+
+      function rotateCanvas(src, deg) {
+        if (!deg) return src;
+        const swap = deg === 90 || deg === 270;
+        const w = src.width, h = src.height;
+        const C = typeof OffscreenCanvas !== 'undefined' ? OffscreenCanvas : null;
+        const out = C
+          ? new C(swap ? h : w, swap ? w : h)
+          : Object.assign(document.createElement('canvas'), { width: swap ? h : w, height: swap ? w : h });
+        const ctx = out.getContext('2d');
+        ctx.translate(out.width / 2, out.height / 2);
+        ctx.rotate((deg * Math.PI) / 180);
+        ctx.drawImage(src, -w / 2, -h / 2);
+        return out;
+      }
+
+      async function canvasToBlob(canvas, type = 'image/jpeg', quality = 0.85) {
+        if (canvas.convertToBlob) return canvas.convertToBlob({ type, quality });
+        return new Promise((res) => canvas.toBlob(res, type, quality));
+      }
+
+      async function makeThumb(srcCanvas) {
+        const ratio = srcCanvas.height / srcCanvas.width;
+        const w = THUMB_WIDTH;
+        const h = Math.round(w * ratio);
+        const C = typeof OffscreenCanvas !== 'undefined' ? OffscreenCanvas : null;
+        const out = C
+          ? new C(w, h)
+          : Object.assign(document.createElement('canvas'), { width: w, height: h });
+        out.getContext('2d').drawImage(srcCanvas, 0, 0, w, h);
+        const blob = await canvasToBlob(out, 'image/jpeg', 0.7);
+        return blobToDataURL(blob);
+      }
+      function blobToDataURL(blob) {
+        return new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result);
+          r.onerror = rej;
+          r.readAsDataURL(blob);
+        });
+      }
+
+      // ——— OCR pipeline ————————————————————————————————————————————
+      // Runs OCR on three rotations and returns the result with the highest
+      // mean word confidence. Future hook: a spine-segmentation model could
+      // crop individual spines from the frame here, then OCR each crop.
+      async function ocrBestRotation(canvas) {
+        const w = await getWorker();
+        const t0 = performance.now();
+        let best = null;
+        for (const deg of ROTATIONS) {
+          const rotated = rotateCanvas(canvas, deg);
+          const blob = await canvasToBlob(rotated, 'image/png');
+          const { data } = await w.recognize(blob);
+          const meanConf = meanWordConfidence(data);
+          if (!best || meanConf > best.meanConf) {
+            best = { rotation: deg, text: data.text || '', words: data.words || [], meanConf };
+          }
+        }
+        const elapsed = performance.now() - t0;
+        dbg.ocr.textContent = `${elapsed.toFixed(0)} ms (rot ${best.rotation}°, conf ${best.meanConf.toFixed(0)})`;
+        dbg.last.textContent = new Date().toLocaleTimeString();
+        return best;
+      }
+      function meanWordConfidence(data) {
+        const words = (data && data.words) || [];
+        const good = words.filter((w) => w && w.confidence != null);
+        if (!good.length) return 0;
+        return good.reduce((s, w) => s + w.confidence, 0) / good.length;
+      }
+      function extractLines(ocrResult) {
+        const linesRaw = (ocrResult.text || '').split(/\r?\n/);
+        const out = [];
+        for (const raw of linesRaw) {
+          const line = raw.replace(/\s+/g, ' ').trim();
+          if (line.length < MIN_LINE_CHARS) continue;
+          if (!/[A-Za-zÀ-ɏ]/.test(line)) continue; // pure-punct/digit reject
+          out.push(line);
+        }
+        // dedupe within a single capture
+        return Array.from(new Set(out));
+      }
+
+      // ——— Storage (idb-keyval) ——————————————————————————————————
+      // One key per entry: `entry:<id>`. Listed via keys() and filtered.
+      async function listEntries(limit) {
+        const all = (await keys()).filter((k) => typeof k === 'string' && k.startsWith(ENTRY_KEY_PREFIX));
+        all.sort(); // ids are timestamps; lexicographic = chronological
+        const slice = limit ? all.slice(-limit).reverse() : all.reverse();
+        const items = await Promise.all(slice.map((k) => get(k)));
+        return items.filter(Boolean);
+      }
+      async function saveEntry(entry) { await set(ENTRY_KEY_PREFIX + entry.id, entry); }
+      async function clearEntries() {
+        const ks = (await keys()).filter((k) => typeof k === 'string' && k.startsWith(ENTRY_KEY_PREFIX));
+        await Promise.all(ks.map((k) => del(k)));
+      }
+
+      // ——— Index UI ————————————————————————————————————————————————
+      async function refreshIndex() {
+        const items = await listEntries(10);
+        const total = (await keys()).filter((k) => typeof k === 'string' && k.startsWith(ENTRY_KEY_PREFIX)).length;
+        entryCount.textContent = total;
+        dbg.entries.textContent = total;
+        entryList.innerHTML = items
+          .map((e) => `
+            <button class="entry" type="button" data-entry-id="${e.id}">
+              <img src="${e.thumbnailDataURL}" alt="" />
+              <div>
+                <div class="meta">${new Date(e.timestamp).toLocaleString()} · ${e.lines.length} line(s) · rot ${e.rotation}°</div>
+                <div class="lines">${escapeHtml((e.lines.slice(0, 3) || []).join('\n'))}</div>
+              </div>
+            </button>`).join('') || '<div class="empty">No captures yet.</div>';
+        // Refresh search corpus indicator too
+        const allItems = await listEntries();
+        corpusSize.textContent = allItems.reduce((s, it) => s + (it.lines?.length || 0), 0);
+        // Click → modal
+        entryList.querySelectorAll('[data-entry-id]').forEach((node) => {
+          node.addEventListener('click', () => openEntryModal(node.dataset.entryId));
+        });
+      }
+
+      async function openEntryModal(id) {
+        const e = await get(ENTRY_KEY_PREFIX + id);
+        if (!e) return;
+        modalTitle.textContent = `${new Date(e.timestamp).toLocaleString()} · rotation ${e.rotation}°`;
+        modalImg.src = e.thumbnailDataURL;
+        modalText.textContent = e.rawText || '(no text)';
+        modal.classList.add('open');
+      }
+      modalClose.addEventListener('click', () => modal.classList.remove('open'));
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+
+      // ——— Capture flow (Index mode) ————————————————————————————————
+      let autoTimer = null;
+      let capturing = false;
+      async function captureOnce() {
+        if (capturing) return;
+        capturing = true;
+        queueDepth++;
+        dbg.queue.textContent = queueDepth;
+        flashIndex.classList.add('on');
+        setTimeout(() => flashIndex.classList.remove('on'), 80);
+        shutterSound();
+
+        const canvas = frameToCanvas(camIndex);
+        if (!canvas) { capturing = false; queueDepth--; dbg.queue.textContent = queueDepth; return; }
+        try {
+          statusIndex.innerHTML = '<span class="dot"></span>OCR…';
+          const ocr = await ocrBestRotation(canvas);
+          const lines = extractLines(ocr);
+          const thumb = await makeThumb(rotateCanvas(canvas, ocr.rotation));
+          const entry = {
+            id: String(Date.now()),
+            timestamp: Date.now(),
+            rawText: ocr.text,
+            lines,
+            thumbnailDataURL: thumb,
+            rotation: ocr.rotation,
+          };
+          await saveEntry(entry);
+          await refreshIndex();
+          statusIndex.innerHTML = `<span class="dot"></span>${lines.length} line(s)`;
+        } catch (err) {
+          console.error('OCR failed', err);
+          statusIndex.innerHTML = '<span class="dot"></span>error';
+        } finally {
+          capturing = false;
+          queueDepth--;
+          dbg.queue.textContent = queueDepth;
+        }
+      }
+
+      function startAutoCapture() {
+        stopAutoCapture();
+        if (!autoBox.checked) return;
+        autoTimer = setInterval(captureOnce, AUTO_INTERVAL_MS);
+      }
+      function stopAutoCapture() {
+        if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+      }
+      autoBox.addEventListener('change', () => {
+        if (cameraOn('index')) startAutoCapture();
+      });
+
+      let cameraStarted = { index: false, live: false };
+      function cameraOn(panel) { return cameraStarted[panel]; }
+
+      startIndexBtn.addEventListener('click', async () => {
+        startIndexBtn.disabled = true;
+        startIndexBtn.textContent = 'Starting…';
+        primeAudio(); // iOS: AudioContext must be created in a user gesture
+        getWorker(); // start the lazy load in parallel with camera
+        const ok = await attachCamera(camIndex);
+        if (!ok) { startIndexBtn.disabled = false; startIndexBtn.textContent = 'Start camera'; return; }
+        cameraStarted.index = true;
+        startIndexBtn.textContent = 'Camera on';
+        captureBtn.disabled = false;
+        statusIndex.innerHTML = '<span class="dot"></span>ready';
+        statusIndex.classList.add('live');
+        startAutoCapture();
+      });
+      captureBtn.addEventListener('click', captureOnce);
+      clearBtn.addEventListener('click', async () => {
+        if (!confirm('Clear ALL indexed captures? This cannot be undone.')) return;
+        await clearEntries();
+        await refreshIndex();
+      });
+
+      // ——— Search mode ————————————————————————————————————————————
+      // Builds Fuse index lazily on every keystroke from the current entries.
+      // Cheap because lines are short and we run in-memory.
+      let searchDebounce = null;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(runSearch, 120);
+      });
+      async function runSearch() {
+        const q = searchInput.value.trim();
+        if (!q) { resultsEl.innerHTML = `<div class="empty">Type to search across <span id="search-corpus-size">${corpusSize.textContent}</span> indexed lines.</div>`; return; }
+        const items = await listEntries();
+        // Flatten: every line is a Fuse doc that knows its parent entry.
+        const docs = [];
+        for (const e of items) {
+          for (const line of e.lines || []) docs.push({ line, entryId: e.id, entry: e });
+        }
+        if (!docs.length) { resultsEl.innerHTML = '<div class="empty">No captures indexed yet.</div>'; return; }
+        const fuse = new Fuse(docs, {
+          keys: ['line'],
+          threshold: FUSE_THRESHOLD,
+          includeScore: true,
+          includeMatches: true,
+          ignoreLocation: true,
+          minMatchCharLength: 2,
+        });
+        const hits = fuse.search(q).slice(0, 50);
+        if (!hits.length) { resultsEl.innerHTML = `<div class="empty">No matches for “${escapeHtml(q)}”.</div>`; return; }
+        resultsEl.innerHTML = hits.map((h) => {
+          const { entry, line } = h.item;
+          const matched = highlightMatch(line, h.matches?.[0]?.indices);
+          return `<button class="result" type="button" data-entry-id="${entry.id}">
+            <img src="${entry.thumbnailDataURL}" alt="" />
+            <div>
+              <div>${matched}</div>
+              <div class="score">match ${(1 - h.score).toFixed(2)} · ${new Date(entry.timestamp).toLocaleString()}</div>
+            </div>
+          </button>`;
+        }).join('');
+        resultsEl.querySelectorAll('[data-entry-id]').forEach((n) => {
+          n.addEventListener('click', () => openEntryModal(n.dataset.entryId));
+        });
+      }
+      function highlightMatch(text, indices) {
+        if (!indices || !indices.length) return escapeHtml(text);
+        let out = '', cursor = 0;
+        for (const [a, b] of indices) {
+          out += escapeHtml(text.slice(cursor, a));
+          out += '<mark>' + escapeHtml(text.slice(a, b + 1)) + '</mark>';
+          cursor = b + 1;
+        }
+        out += escapeHtml(text.slice(cursor));
+        return out;
+      }
+
+      // ——— Live find mode ————————————————————————————————————————
+      let liveTimer = null;
+      let liveRunning = false;
+      startLiveBtn.addEventListener('click', async () => {
+        if (liveRunning) { stopLive(); return; }
+        const target = liveTarget.value.trim();
+        if (!target) { liveStatusEl.textContent = 'Enter a target first.'; return; }
+        startLiveBtn.disabled = true;
+        startLiveBtn.textContent = 'Starting…';
+        primeAudio();
+        getWorker();
+        const ok = await attachCamera(camLive);
+        if (!ok) { startLiveBtn.disabled = false; startLiveBtn.textContent = 'Start'; return; }
+        liveRunning = true;
+        startLiveBtn.disabled = false;
+        startLiveBtn.textContent = 'Stop';
+        startLiveBtn.classList.remove('primary');
+        statusLive.classList.add('live');
+        statusLive.innerHTML = '<span class="dot"></span>scanning…';
+        liveStatusEl.innerHTML = `Looking for <strong>${escapeHtml(target)}</strong>…`;
+        liveTimer = setInterval(() => liveTick(target), LIVE_INTERVAL_MS);
+      });
+      function stopLive() {
+        liveRunning = false;
+        if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+        statusLive.classList.remove('live');
+        statusLive.innerHTML = '<span class="dot"></span>idle';
+        startLiveBtn.disabled = false;
+        startLiveBtn.textContent = 'Start';
+        startLiveBtn.classList.add('primary');
+      }
+
+      async function liveTick(target) {
+        if (inflight) return; // drop frame; OCR slower than tick
+        inflight = true;
+        queueDepth++;
+        dbg.queue.textContent = queueDepth;
+        try {
+          const canvas = frameToCanvas(camLive);
+          if (!canvas) return;
+          const ocr = await ocrBestRotation(canvas);
+          const lines = extractLines(ocr);
+          if (!lines.length) return;
+          const fuse = new Fuse(lines.map((line) => ({ line })), {
+            keys: ['line'],
+            threshold: FUSE_THRESHOLD,
+            includeScore: true,
+            ignoreLocation: true,
+            minMatchCharLength: 2,
+          });
+          const hits = fuse.search(target);
+          if (hits.length) {
+            const top = hits[0];
+            beep();
+            borderLive.classList.add('match');
+            setTimeout(() => borderLive.classList.remove('match'), 500);
+            statusLive.innerHTML = '<span class="dot"></span>match';
+            liveStatusEl.innerHTML =
+              `Looking for <strong>${escapeHtml(target)}</strong>…<div class="matched-line">${escapeHtml(top.item.line)} <span style="color:var(--ink-soft);font-weight:normal">(score ${(1 - top.score).toFixed(2)})</span></div>`;
+          } else {
+            statusLive.innerHTML = '<span class="dot"></span>scanning…';
+          }
+        } catch (err) {
+          console.error('live OCR failed', err);
+        } finally {
+          inflight = false;
+          queueDepth--;
+          dbg.queue.textContent = queueDepth;
+        }
+      }
+
+      // ——— Audio: short beep ——————————————————————————————————————
+      let audioCtx = null;
+      function primeAudio() {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+        } catch {}
+      }
+      function beep() {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const o = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          o.frequency.value = 800;
+          o.type = 'sine';
+          o.connect(g); g.connect(audioCtx.destination);
+          const t = audioCtx.currentTime;
+          g.gain.setValueAtTime(0.001, t);
+          g.gain.exponentialRampToValueAtTime(0.3, t + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+          o.start(t);
+          o.stop(t + 0.16);
+        } catch { /* audio is best-effort */ }
+      }
+      function shutterSound() {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const o = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          o.frequency.value = 1500;
+          o.type = 'square';
+          o.connect(g); g.connect(audioCtx.destination);
+          const t = audioCtx.currentTime;
+          g.gain.setValueAtTime(0.05, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+          o.start(t);
+          o.stop(t + 0.05);
+        } catch {}
+      }
+
+      // ——— Tabs ——————————————————————————————————————————————————
+      tabbar.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-tab]');
+        if (!btn) return;
+        const tab = btn.dataset.tab;
+        tabbar.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
+        panels.forEach((p) => p.classList.toggle('active', p.dataset.panel === tab));
+        // Switching panels stops the OTHER panel's camera-related work.
+        if (tab !== 'index') stopAutoCapture();
+        else if (cameraStarted.index) startAutoCapture();
+        if (tab !== 'live' && liveRunning) stopLive();
+      });
+
+      // ——— FPS meter (just for debug strip) ————————————————————————
+      let frameStamps = [];
+      function fpsTick() {
+        const now = performance.now();
+        frameStamps.push(now);
+        while (frameStamps.length && frameStamps[0] < now - 1000) frameStamps.shift();
+        dbg.fps.textContent = frameStamps.length;
+        requestAnimationFrame(fpsTick);
+      }
+      requestAnimationFrame(fpsTick);
+
+      // ——— Misc ————————————————————————————————————————————————————
+      function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        })[c]);
+      }
+
+      // Initial paint
+      refreshIndex();
+    </script>
+  </body>
+</html>
