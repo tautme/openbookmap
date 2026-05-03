@@ -124,9 +124,7 @@ async function renderShop(osmType, osmId) {
 
   root.innerHTML = `
     <div class="card">
-      <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft)">
-        Bookstore · OSM ${escapeHtml(osmType)}/${escapeHtml(osmId)}
-      </div>
+      <div class="card-eyebrow">Bookstore · OSM ${escapeHtml(osmType)}/${escapeHtml(osmId)}</div>
       <h2 style="margin-top:6px;font-size:32px;font-weight:600;letter-spacing:-0.01em">${escapeHtml(name)}</h2>
       <p style="color:var(--ink-soft);margin:8px 0 0">${escapeHtml(addr || strings.map.unknownAddress)}</p>
       <p style="margin-top:10px">
@@ -146,19 +144,19 @@ async function renderShop(osmType, osmId) {
     </div>
 
     <div class="card">
-      <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px">${escapeHtml(strings.shop.photos)}</h3>
+      <h3 class="card-heading">${escapeHtml(strings.shop.photos)}</h3>
       ${photosHtml}
     </div>
 
     <div class="card">
-      <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px">${escapeHtml(strings.shop.books)}</h3>
+      <h3 class="card-heading">${escapeHtml(strings.shop.books)}</h3>
       ${booksHtml}
     </div>
 
     ${
       contribsHtml
         ? `<div class="card">
-            <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px">${escapeHtml(strings.shop.contributions)}</h3>
+            <h3 class="card-heading">${escapeHtml(strings.shop.contributions)}</h3>
             ${contribsHtml}
           </div>`
         : ''

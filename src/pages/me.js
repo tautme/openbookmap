@@ -72,9 +72,7 @@ async function renderSelf(user) {
 
   root.innerHTML = `
     <div class="card">
-      <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft)">
-        ${escapeHtml(user.email)}
-      </div>
+      <div class="card-eyebrow">${escapeHtml(user.email)}</div>
       <h2 style="font-size:28px;font-weight:600;letter-spacing:-0.01em;margin-top:6px">
         ${escapeHtml(profile?.display_name || profile?.username || 'Your contributions')}
       </h2>
@@ -96,14 +94,14 @@ async function renderSelf(user) {
     </div>
 
     <div class="card">
-      <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px">
+      <h3 class="card-heading">
         ${escapeHtml(strings.me.photosHeading)} · ${photos?.length ?? 0}
       </h3>
       ${renderMyPhotos(photos)}
     </div>
 
     <div class="card">
-      <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px">
+      <h3 class="card-heading">
         ${escapeHtml(strings.me.booksHeading)} · ${books?.length ?? 0}
       </h3>
       ${renderMyBooks(books)}
@@ -256,11 +254,11 @@ async function renderOther(username) {
       ${profile.bio ? `<p style="margin-top:12px">${escapeHtml(profile.bio)}</p>` : ''}
     </div>
     <div class="card">
-      <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px">Photos</h3>
+      <h3 class="card-heading">Photos</h3>
       ${renderMyPhotos(photos).replace(/<button[^>]*>delete<\/button>/g, '')}
     </div>
     <div class="card">
-      <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px">Books</h3>
+      <h3 class="card-heading">Books</h3>
       ${books?.length ? '<ul class="book-list">' + books.map((b) => `<li><span class="title">${escapeHtml(b.title)}</span><span class="author">${escapeHtml(b.author || '')}</span></li>`).join('') + '</ul>' : `<div class="empty">No titles yet.</div>`}
     </div>
   `;
