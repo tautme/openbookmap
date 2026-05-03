@@ -175,6 +175,23 @@
   opacity: 0.5;
 }
 
+/* Small reusable typographic helpers used inside .card blocks. */
+.card-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.card-heading {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 12px;
+}
+
 /* ——— Footer ——— */
 footer.site-footer {
   margin-top: 80px;

@@ -74,7 +74,7 @@ async function runSearch(q) {
 
   const shopsHtml = hasShops
     ? `<div class="card">
-        <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px">${escapeHtml(strings.search.shopsHeading)}</h3>
+        <h3 class="card-heading">${escapeHtml(strings.search.shopsHeading)}</h3>
         <ul class="book-list">${shops
           .map(
             (s) =>
@@ -89,7 +89,7 @@ async function runSearch(q) {
 
   const booksHtml = hasBooks
     ? `<div class="card">
-        <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:12px">${escapeHtml(strings.search.booksHeading)}</h3>
+        <h3 class="card-heading">${escapeHtml(strings.search.booksHeading)}</h3>
         <ul class="book-list">${books
           .map(
             (b) =>
