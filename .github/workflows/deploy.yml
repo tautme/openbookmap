@@ -31,8 +31,8 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_GOATCOUNTER_CODE: ${{ secrets.VITE_GOATCOUNTER_CODE }}
         run: npm run build
-      - name: Preserve CNAME
-        run: cp CNAME dist/CNAME
+      - name: Preserve CNAME (if present)
+        run: '[ -f CNAME ] && cp CNAME dist/CNAME || echo "no CNAME, skipping"'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
