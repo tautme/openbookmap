@@ -58,6 +58,17 @@
   border-color: var(--stamp);
 }
 @media (max-width: 600px) {
+  .topbar {
+    padding: 8px 12px;
+  }
+  .topbar nav {
+    gap: 8px;
+  }
+  .topbar nav a {
+    padding: 6px 6px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
   .topbar nav a:not(.cta):not(.always-show) {
     display: none;
   }

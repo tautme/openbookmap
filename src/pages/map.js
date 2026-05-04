@@ -26,10 +26,13 @@ const startLat = initial.lat ?? 20;
 const startLon = initial.lon ?? 0;
 const startZoom = initial.z ?? 2;
 
-const map = L.map('map', { zoomControl: true, worldCopyJump: true }).setView(
-  [startLat, startLon],
-  startZoom,
-);
+// Top-left is occupied by the searchbar, so put zoom in the bottom-right
+// where it doesn't overlap with the searchbar or the loading pill.
+const map = L.map('map', {
+  zoomControl: false,
+  worldCopyJump: true,
+}).setView([startLat, startLon], startZoom);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 
 // CartoDB Positron — clean grayscale basemap, free, CDN-backed.
 // https://github.com/CartoDB/basemap-styles

@@ -19,10 +19,10 @@ function renderTopbar(active) {
   return `
     <a href="/" class="brand">${app.name}<span class="dot">.</span></a>
     <nav>
-      <a href="/about.html" class="always-show${isActive('about')}">${nav.about}</a>
       <a href="/map.html" class="always-show${isActive('map')}">${nav.map}</a>
-      <a href="/search.html"${isActive('search') ? ' class="active"' : ''}>${nav.search}</a>
-      <a href="/me.html"${isActive('me') ? ' class="active"' : ''}>${nav.me}</a>
+      <a href="/search.html" class="always-show${isActive('search')}">${nav.search}</a>
+      <a href="/me.html" class="always-show${isActive('me')}">${nav.me}</a>
+      <a href="/about.html"${isActive('about') ? ' class="active"' : ''}>${nav.about}</a>
       <a href="/contribute.html" class="cta${active === 'contribute' ? ' active' : ''}">${nav.contribute}</a>
     </nav>
   `;
