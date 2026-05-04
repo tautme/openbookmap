@@ -11,7 +11,7 @@ export function mountFooter({ mount } = {}) {
       OpenBookMap · A work in progress · © MMXXVI, released under open licenses
     </div>
     <div>
-      <a href="/about.html">About</a>
+      <a href="./about.html">About</a>
       &nbsp;·&nbsp;
       <a href="https://github.com/tautme/openbookmap" target="_blank" rel="noopener">GitHub</a>
       &nbsp;·&nbsp;

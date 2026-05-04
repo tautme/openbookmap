@@ -25,6 +25,6 @@ export const faq = [
   },
   {
     q: 'What do you track about me?',
-    a: 'Privacy-respecting page counts via GoatCounter — no cookies, no fingerprinting, no ad networks. Details live on the <a href="/about.html#privacy">About page</a>.',
+    a: 'Privacy-respecting page counts via GoatCounter — no cookies, no fingerprinting, no ad networks. Details live on the <a href="./about.html#privacy">About page</a>.',
   },
 ];

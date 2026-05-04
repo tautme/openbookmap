@@ -86,7 +86,7 @@ function renderPickShopView(user) {
       <p>${escapeHtml(strings.contribute.signedInAs(user.email))} · <a href="#" id="signout">${escapeHtml(strings.contribute.signOut)}</a></p>
       <h2>${escapeHtml(strings.contribute.needShop)}</h2>
       <p>
-        <a class="btn stamp" href="/map.html">${escapeHtml(strings.nav.map)} →</a>
+        <a class="btn stamp" href="./map.html">${escapeHtml(strings.nav.map)} →</a>
       </p>
     </div>
   `;

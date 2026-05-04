@@ -37,7 +37,7 @@ async function render() {
       <div class="card">
         <h2>${escapeHtml(strings.me.signedOut)}</h2>
         <p>
-          <a class="btn stamp" href="/contribute.html">Sign in</a>
+          <a class="btn stamp" href="./contribute.html">Sign in</a>
         </p>
       </div>`;
     return;

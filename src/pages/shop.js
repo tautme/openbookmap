@@ -133,14 +133,14 @@ async function renderShop(osmType, osmId) {
       <p style="margin-top:10px">
         ${website ? `<a href="${escapeAttr(website)}" target="_blank" rel="noopener">Website</a> · ` : ''}
         <a href="${escapeAttr(osmUrl)}" target="_blank" rel="noopener">${escapeHtml(strings.shop.openInOsm)}</a>
-        ${coords ? ` · <a href="/map.html?lat=${coords.lat}&lon=${coords.lon}&z=16&shop=${osmType}/${osmId}">See on map →</a>` : ''}
+        ${coords ? ` · <a href="./map.html?lat=${coords.lat}&lon=${coords.lon}&z=16&shop=${osmType}/${osmId}">See on map →</a>` : ''}
       </p>
       <div class="stats" style="margin-top:18px">
         <div><strong>${shop?.photo_count ?? 0}</strong>photos</div>
         <div><strong>${shop?.book_count ?? 0}</strong>books indexed</div>
       </div>
       <p>
-        <a class="btn stamp" href="/contribute.html?osm_type=${encodeURIComponent(osmType)}&osm_id=${encodeURIComponent(osmId)}&name=${encodeURIComponent(name)}${coords ? `&lat=${coords.lat}&lon=${coords.lon}` : ''}">
+        <a class="btn stamp" href="./contribute.html?osm_type=${encodeURIComponent(osmType)}&osm_id=${encodeURIComponent(osmId)}&name=${encodeURIComponent(name)}${coords ? `&lat=${coords.lat}&lon=${coords.lon}` : ''}">
           ${escapeHtml(strings.map.contributeCta)}
         </a>
       </p>

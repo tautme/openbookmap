@@ -18,7 +18,7 @@ export async function renderShopPanel(inner, osmElement) {
 
   inner.innerHTML = `
     <div class="eyebrow">Bookstore · OSM ${escapeHtml(osmElement.type)}/${escapeHtml(String(osmElement.id))}</div>
-    <h2><a href="/shop.html?type=${encodeURIComponent(osmElement.type)}&id=${encodeURIComponent(osmElement.id)}" style="color:inherit;text-decoration:none">${escapeHtml(name)}</a></h2>
+    <h2><a href="./shop.html?type=${encodeURIComponent(osmElement.type)}&id=${encodeURIComponent(osmElement.id)}" style="color:inherit;text-decoration:none">${escapeHtml(name)}</a></h2>
     <div class="addr">${escapeHtml(addr || strings.map.unknownAddress)}${
       website
         ? ` · <a href="${escapeAttr(website)}" target="_blank" rel="noopener">website</a>`
@@ -33,7 +33,7 @@ export async function renderShopPanel(inner, osmElement) {
     <h3>${strings.shop.books}</h3>
     <div id="books-area"><div class="empty">Loading…</div></div>
     <div class="cta-bar">
-      <a class="btn stamp" href="/contribute.html?osm_type=${encodeURIComponent(osmElement.type)}&osm_id=${encodeURIComponent(osmElement.id)}&name=${encodeURIComponent(name)}${coords ? `&lat=${coords.lat}&lon=${coords.lon}` : ''}">
+      <a class="btn stamp" href="./contribute.html?osm_type=${encodeURIComponent(osmElement.type)}&osm_id=${encodeURIComponent(osmElement.id)}&name=${encodeURIComponent(name)}${coords ? `&lat=${coords.lat}&lon=${coords.lon}` : ''}">
         ${strings.map.contributeCta}
       </a>
     </div>

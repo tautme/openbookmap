@@ -13,7 +13,7 @@ const ZOOM = 12;
 const TIMEOUT_MS = 3000;
 
 function go(coords, zoom) {
-  const url = `/map.html?lat=${coords.lat.toFixed(4)}&lon=${coords.lon.toFixed(4)}&z=${zoom}`;
+  const url = `./map.html?lat=${coords.lat.toFixed(4)}&lon=${coords.lon.toFixed(4)}&z=${zoom}`;
   location.replace(url);
 }
 
