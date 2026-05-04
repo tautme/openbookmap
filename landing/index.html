@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>OpenBookMap</title>
+    <meta
+      name="description"
+      content="Used bookshops. Mapped. Photographed. Searchable. Free."
+    />
+    <meta name="theme-color" content="#1a1613" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,800;1,9..144,800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f4ecd8;
+        --paper-soft: rgba(244, 236, 216, 0.92);
+        --ink: #1a1613;
+        --ink-soft: #3a332c;
+        --stamp: #a8321c;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        font-family: 'Fraunces', Georgia, serif;
+        color: var(--ink);
+        background: #2b2520 url('shelf.jpg') center/cover no-repeat fixed;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+      /* Slight darkening so the text panel pops on bright spines. */
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0.45) 100%);
+        z-index: 0;
+        pointer-events: none;
+      }
+      main {
+        position: relative;
+        z-index: 1;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .panel {
+        background: var(--paper-soft);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        border: 1px solid rgba(26, 22, 19, 0.15);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+        max-width: 540px;
+        width: 100%;
+        padding: 32px 28px 28px;
+        text-align: center;
+        border-radius: 4px;
+      }
+      .eyebrow {
+        font-family: 'DM Mono', ui-monospace, monospace;
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin-bottom: 14px;
+      }
+      h1 {
+        font-size: clamp(40px, 9vw, 64px);
+        font-weight: 800;
+        font-style: italic;
+        line-height: 1;
+        letter-spacing: -0.02em;
+        margin-bottom: 18px;
+      }
+      h1 .dot {
+        color: var(--stamp);
+      }
+      .words {
+        font-family: 'Fraunces', Georgia, serif;
+        font-weight: 600;
+        font-size: clamp(22px, 4.5vw, 30px);
+        line-height: 1.25;
+        letter-spacing: -0.01em;
+        color: var(--ink);
+        margin: 18px 0 26px;
+      }
+      .words span {
+        display: inline-block;
+        white-space: nowrap;
+        margin: 0 4px;
+      }
+      .words .dot {
+        color: var(--stamp);
+        font-weight: 800;
+      }
+      .cta {
+        display: inline-block;
+        margin: 4px 6px;
+        padding: 14px 22px;
+        background: var(--ink);
+        color: var(--paper);
+        text-decoration: none;
+        font-family: 'DM Mono', ui-monospace, monospace;
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        border: 1px solid var(--ink);
+        border-radius: 2px;
+        transition:
+          background 0.15s,
+          border-color 0.15s;
+      }
+      .cta:hover {
+        background: var(--stamp);
+        border-color: var(--stamp);
+      }
+      .cta.secondary {
+        background: transparent;
+        color: var(--ink);
+      }
+      .cta.secondary:hover {
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .footer {
+        position: fixed;
+        bottom: 12px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        z-index: 1;
+        font-family: 'DM Mono', ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(244, 236, 216, 0.7);
+        padding: 0 16px;
+      }
+      .footer a {
+        color: inherit;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      @media (max-width: 480px) {
+        .panel {
+          padding: 24px 20px 20px;
+        }
+        .words span {
+          display: block;
+          margin: 6px 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="panel">
+        <div class="eyebrow">Est. MMXXVI · Vol. I · No. 1</div>
+        <h1>OpenBookMap<span class="dot">.</span></h1>
+        <div class="words">
+          <span>Bookshops<span class="dot">.</span></span>
+          <span>Mapped<span class="dot">.</span></span>
+          <span>Photographed<span class="dot">.</span></span>
+          <span>Searchable<span class="dot">.</span></span>
+        </div>
+        <a class="cta" href="https://tautme.github.io/openbookmap/">Open the map →</a>
+        <a class="cta secondary" href="https://github.com/tautme/openbookmap">GitHub</a>
+      </div>
+    </main>
+    <div class="footer">
+      Built on OpenStreetMap · Free forever · CC-BY-SA
+    </div>
+  </body>
+</html>
