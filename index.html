@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OpenBookMap — A global map of used bookstores</title>
+    <title>OpenBookMap</title>
     <meta
       name="description"
-      content="An open, community-built map of used bookstores worldwide, with searchable inventories built from shelf photos. Work in progress. Join us."
+      content="A global map of used bookstores, with searchable inventories built from shelf photos."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,169 +14,64 @@
       href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400&display=swap"
       rel="stylesheet"
     />
+    <style>
+      .splash {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        text-align: center;
+        padding: 24px;
+      }
+      .splash h1 {
+        font-family: var(--font-serif);
+        font-size: clamp(36px, 6vw, 56px);
+        font-weight: 800;
+        font-style: italic;
+        letter-spacing: -0.02em;
+      }
+      .splash .subtitle {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      .splash #status {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--ink-soft);
+        letter-spacing: 0.05em;
+      }
+      .splash .links {
+        margin-top: 8px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.1em;
+      }
+      .splash .links a {
+        color: var(--ink-soft);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        margin: 0 8px;
+      }
+      .splash .links a:hover {
+        color: var(--stamp);
+      }
+    </style>
   </head>
   <body>
-    <div class="landing-wrap">
-      <header class="mast">
-        <div class="stamp-badge">Work&nbsp;in&nbsp;Progress</div>
-        <div class="eyebrow">Est. MMXXVI · Vol. I · No. 1</div>
-        <h1 class="title">OpenBookMap</h1>
-        <div class="subtitle">
-          A global atlas <span style="opacity: 0.5">·</span> of used bookstores
-          <span style="opacity: 0.5">·</span> and the books inside them
-        </div>
-        <div style="margin-top: 22px">
-          <a href="/map.html" class="btn stamp">Open the Map →</a>
-        </div>
-      </header>
-
-      <p class="lede">
-        <span class="drop">W</span>e are building an open, community-made map of every used
-        bookstore in the world — and, shelf by shelf, a searchable index of the books on their
-        shelves. Built on the <em>OpenStreetMap</em> ecosystem, in the spirit of
-        <em>OpenSkiMap</em>. Free to use. Free to contribute. Forever.
-      </p>
-
-      <section>
-        <div class="sec-label"><span>The Idea</span><span class="num">I.</span></div>
-        <h2>Find the book before you drive two hours to the shop.</h2>
-        <p>
-          Used bookstores are one of the last great analog pleasures — and one of the worst for
-          discovery. You can't search their shelves from your phone. You drive across town on a
-          hunch. Sometimes you find a treasure. Most times you don't.
-        </p>
-        <p>
-          OpenBookMap is the shared index we've all been missing. Contributors drop a pin on a shop,
-          snap a few photos of the shelves, and our system turns those photos into a searchable
-          catalog. Next traveler searches a title — and knows exactly which shop, in which city, on
-          which shelf, to walk into.
-        </p>
-      </section>
-
-      <section>
-        <div class="sec-label"><span>How It Works</span><span class="num">II.</span></div>
-        <div class="plan">
-          <div class="card">
-            <div class="step">Step 01</div>
-            <h3>Map the shop</h3>
-            <p>
-              Contributors add used bookstores to OpenStreetMap — name, hours, a short description.
-              Every shop gets a pin on our map.
-            </p>
-          </div>
-          <div class="card">
-            <div class="step">Step 02</div>
-            <h3>Photograph the shelves</h3>
-            <p>
-              Walk in, snap spines, upload. No special gear. A phone is enough. Photos stay linked
-              to their shop and shelf.
-            </p>
-          </div>
-          <div class="card">
-            <div class="step">Step 03</div>
-            <h3>Extract the titles</h3>
-            <p>
-              Our pipeline turns shelf photos into a list of titles and authors — searchable in the
-              browser, in seconds, worldwide.
-            </p>
-          </div>
-          <div class="card">
-            <div class="step">Step 04</div>
-            <h3>Search the world</h3>
-            <p>
-              Looking for a first-edition <em>Calvino</em>? Find the three shops that have one — and
-              plan your next detour.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div class="sec-label"><span>Progress Report</span><span class="num">III.</span></div>
-        <h2>Where we are today.</h2>
-        <ul class="progress-list">
-          <li>
-            <span class="tag done">Done</span>
-            <span class="what">Concept, scope, and principles — simple, open, fast.</span>
-            <span class="meta">v0.1</span>
-          </li>
-          <li>
-            <span class="tag now">Now</span>
-            <span class="what"
-              >Full-stack rebuild on Vite: shared components, migrations, GitHub Actions.</span
-            >
-            <span class="meta">this month</span>
-          </li>
-          <li>
-            <span class="tag next">Next</span>
-            <span class="what"
-              >Smarter OCR (vision-model fallback when Tesseract's confidence is low).</span
-            >
-            <span class="meta">soon</span>
-          </li>
-          <li>
-            <span class="tag next">Next</span>
-            <span class="what">Global fuzzy search across every shop and every book title.</span>
-            <span class="meta">later</span>
-          </li>
-        </ul>
-
-        <div class="iterations">
-          <div class="iterations-label">Try the iterations →</div>
-          <div class="iteration-buttons" data-iterations></div>
-        </div>
-      </section>
-
-      <section>
-        <div class="sec-label"><span>Get Involved</span><span class="num">IV.</span></div>
-        <div class="involve">
-          <div>
-            <h3>Join the mailing list.</h3>
-            <p>
-              Occasional notes on progress, new features, and how to contribute. No spam, no
-              tracking. Unsubscribe with one click.
-            </p>
-            <form class="signup" id="signup-form">
-              <input
-                type="email"
-                id="signup-email"
-                placeholder="you@example.com"
-                required
-                autocomplete="email"
-              />
-              <button type="submit">Subscribe</button>
-            </form>
-            <div class="consent" id="signup-consent">
-              By subscribing you agree to receive project updates.
-            </div>
-          </div>
-
-          <div class="zoom-card">
-            <h3>Jump on the daily call.</h3>
-            <p>
-              We meet every day — contributors, readers, booksellers, curious lurkers. Drop in, say
-              hello, pitch an idea, or just listen.
-            </p>
-            <div class="zoom-time">Daily · 10:00 AM PST</div>
-            <a
-              class="btn stamp"
-              href="https://us02web.zoom.us/j/4639378882"
-              target="_blank"
-              rel="noopener"
-              >Open Zoom Room →</a
-            >
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div class="sec-label"><span>Common Questions</span><span class="num">V.</span></div>
-        <div data-faq></div>
-      </section>
-    </div>
-
-    <footer data-footer></footer>
-
+    <main class="splash">
+      <div class="subtitle">A global atlas of used bookstores</div>
+      <h1>OpenBookMap</h1>
+      <div id="status">Loading map…</div>
+      <div class="links">
+        <a href="/map.html">Open the map →</a>
+        <a href="/about.html">About</a>
+      </div>
+    </main>
     <script type="module" src="/src/pages/landing.js"></script>
   </body>
 </html>
