@@ -17,13 +17,13 @@ function renderTopbar(active) {
   const { nav, app } = strings;
   const isActive = (k) => (k === active ? ' active' : '');
   return `
-    <a href="/" class="brand">${app.name}<span class="dot">.</span></a>
+    <a href="./" class="brand">${app.name}<span class="dot">.</span></a>
     <nav>
-      <a href="/map.html" class="always-show${isActive('map')}">${nav.map}</a>
-      <a href="/search.html" class="always-show${isActive('search')}">${nav.search}</a>
-      <a href="/me.html" class="always-show${isActive('me')}">${nav.me}</a>
-      <a href="/about.html"${isActive('about') ? ' class="active"' : ''}>${nav.about}</a>
-      <a href="/contribute.html" class="cta${active === 'contribute' ? ' active' : ''}">${nav.contribute}</a>
+      <a href="./map.html" class="always-show${isActive('map')}">${nav.map}</a>
+      <a href="./search.html" class="always-show${isActive('search')}">${nav.search}</a>
+      <a href="./me.html" class="always-show${isActive('me')}">${nav.me}</a>
+      <a href="./about.html"${isActive('about') ? ' class="active"' : ''}>${nav.about}</a>
+      <a href="./contribute.html" class="cta${active === 'contribute' ? ' active' : ''}">${nav.contribute}</a>
     </nav>
   `;
 }

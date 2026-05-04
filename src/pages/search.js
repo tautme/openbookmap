@@ -98,7 +98,7 @@ function renderShops(shops) {
       .map(
         (s) =>
           `<li>
-             <span class="title"><a href="/shop.html?type=${encodeURIComponent(s.osm_type)}&id=${encodeURIComponent(s.osm_id)}">${escapeHtml(s.name || strings.map.unnamed)}</a></span>
+             <span class="title"><a href="./shop.html?type=${encodeURIComponent(s.osm_type)}&id=${encodeURIComponent(s.osm_id)}">${escapeHtml(s.name || strings.map.unnamed)}</a></span>
              <span class="author">${escapeHtml([s.city, s.country].filter(Boolean).join(', '))}</span>
            </li>`,
       )

@@ -6,6 +6,9 @@ import { resolve } from 'node:path';
 // GitHub Pages. No SPA router, no server.
 export default defineConfig({
   root: '.',
+  // Relative base so the built site works under any path prefix —
+  // openbookmap.org/ AND tautme.github.io/openbookmap/ — without rebuilding.
+  base: './',
   publicDir: 'public',
   build: {
     outDir: 'dist',
