@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>spine-vision labeler</title>
+    <meta name="theme-color" content="#0f1115" />
+    <style>
+      :root {
+        --bg: #0f1115;
+        --surface: #181b22;
+        --surface-2: #20242d;
+        --ink: #e8eaf0;
+        --ink-soft: #9ba2b1;
+        --accent: #ff9b6b;
+        --good: #5fd58a;
+        --bad: #f06a6a;
+        --rule: #2a2e3a;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        height: 100%;
+        background: var(--bg);
+        color: var(--ink);
+        font: 15px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      button, input, select, textarea {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        background: var(--surface-2);
+        border: 1px solid var(--rule);
+        color: var(--ink);
+        padding: 8px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        min-height: 38px;
+      }
+      button:hover { background: var(--surface); }
+      button.primary {
+        background: var(--accent);
+        color: #1a0f08;
+        border-color: var(--accent);
+        font-weight: 600;
+      }
+      button.primary:hover { filter: brightness(1.05); }
+      button.danger {
+        color: var(--bad);
+        border-color: var(--bad);
+        background: transparent;
+      }
+      button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+      .app {
+        display: grid;
+        grid-template-rows: 50px 1fr;
+        height: 100dvh;
+      }
+
+      header {
+        background: var(--surface);
+        border-bottom: 1px solid var(--rule);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 14px;
+      }
+      header h1 {
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin-right: auto;
+      }
+      header .progress {
+        font-size: 13px;
+        color: var(--ink-soft);
+      }
+      header .progress .done { color: var(--good); }
+
+      main {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 0;
+        min-height: 0;
+      }
+      @media (max-width: 800px) {
+        main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+      }
+
+      .stage {
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+      }
+      .stage img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      }
+      .stage .empty {
+        color: var(--ink-soft);
+        text-align: center;
+        padding: 32px;
+        font-size: 15px;
+      }
+      .stage .empty input[type="file"] {
+        display: none;
+      }
+      .stage .empty .drop {
+        margin-top: 14px;
+        padding: 24px;
+        border: 2px dashed var(--rule);
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .stage .empty .drop.drag { border-color: var(--accent); background: rgba(255, 155, 107, 0.08); }
+      .stage .empty .drop strong { color: var(--ink); }
+
+      .panel {
+        background: var(--surface);
+        border-left: 1px solid var(--rule);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow-y: auto;
+      }
+      @media (max-width: 800px) {
+        .panel { border-left: none; border-top: 1px solid var(--rule); max-height: 50dvh; }
+      }
+      .panel label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--ink-soft);
+        display: block;
+        margin-bottom: 4px;
+      }
+      .panel textarea {
+        width: 100%;
+        background: var(--surface-2);
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        padding: 10px 12px;
+        color: var(--ink);
+        resize: vertical;
+        min-height: 180px;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 14px;
+      }
+      .panel textarea:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .panel select, .panel input[type="text"] {
+        width: 100%;
+        background: var(--surface-2);
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        padding: 8px 10px;
+        color: var(--ink);
+      }
+      .panel .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .panel .nav {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: auto;
+        padding-top: 10px;
+        border-top: 1px solid var(--rule);
+      }
+      .panel .nav .filename {
+        flex: 1;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 12px;
+        color: var(--ink-soft);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .panel .saved-tag {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 2px 6px;
+        border-radius: 3px;
+      }
+      .panel .saved-tag.done { color: var(--good); border: 1px solid var(--good); }
+      .panel .saved-tag.todo { color: var(--ink-soft); border: 1px solid var(--rule); }
+      .panel .help {
+        font-size: 12px;
+        color: var(--ink-soft);
+        line-height: 1.5;
+      }
+      .panel .help kbd {
+        display: inline-block;
+        padding: 1px 5px;
+        background: var(--surface-2);
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>spine-vision · labeler</h1>
+        <span class="progress" id="progress"></span>
+        <div class="toolbar">
+          <button id="btn-add" type="button">Add photos</button>
+          <button id="btn-export" type="button" disabled>Export JSONL</button>
+          <button class="danger" id="btn-clear" type="button" disabled>Clear all</button>
+        </div>
+      </header>
+
+      <main>
+        <div class="stage" id="stage">
+          <div class="empty" id="empty">
+            <p>No photos loaded. Drag a folder of photos in, or click below.</p>
+            <label class="drop" id="drop">
+              <strong>Click to choose images</strong> or drag-and-drop a folder.
+              <input type="file" id="file-input" accept="image/*" multiple webkitdirectory />
+            </label>
+            <p style="margin-top: 14px; font-size: 12px; color: var(--ink-soft)">
+              Files are processed locally in your browser. Nothing is uploaded.
+            </p>
+          </div>
+        </div>
+
+        <aside class="panel" id="panel" hidden>
+          <div>
+            <label for="lines">One line per spine — title, then author on next line, etc.</label>
+            <textarea id="lines" placeholder="The Bostonians&#10;Henry James&#10;&#10;Daisy Miller&#10;Henry James" autofocus></textarea>
+          </div>
+          <div class="row">
+            <div>
+              <label for="language">Language</label>
+              <select id="language">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+                <option value="ja">Japanese</option>
+                <option value="zh">Chinese</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label for="lighting">Lighting</label>
+              <select id="lighting">
+                <option value="indoor">Indoor</option>
+                <option value="natural">Natural</option>
+                <option value="dim">Dim</option>
+                <option value="harsh">Harsh / glare</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label for="notes">Notes (optional)</label>
+            <input type="text" id="notes" placeholder="e.g. tilted, ornate fonts" />
+          </div>
+          <div class="help">
+            <kbd>↑</kbd> / <kbd>↓</kbd> previous / next photo ·
+            <kbd>⌘</kbd>+<kbd>Enter</kbd> save and go next ·
+            autosaved as you type
+          </div>
+          <div class="nav">
+            <button id="btn-prev" type="button">← Prev</button>
+            <span class="filename" id="filename"></span>
+            <span class="saved-tag" id="saved-tag"></span>
+            <button class="primary" id="btn-next" type="button">Next →</button>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module">
+      // ——— State ————————————————————————————————————————————————————
+      // Photos live as { name, blob, url } in memory only — never uploaded,
+      // never written to disk. Labels are persisted to localStorage so
+      // closing the tab doesn't lose work.
+      const STORAGE_PREFIX = 'spine-vision-labeler:';
+
+      let photos = [];     // [{ name, blob, url }]
+      let index = 0;
+      let dirty = false;   // true between input event and autosave flush
+
+      // ——— DOM ——————————————————————————————————————————————————————
+      const $ = (id) => document.getElementById(id);
+      const stage = $('stage');
+      const empty = $('empty');
+      const panel = $('panel');
+      const linesEl = $('lines');
+      const langEl = $('language');
+      const lightEl = $('lighting');
+      const notesEl = $('notes');
+      const filenameEl = $('filename');
+      const savedTagEl = $('saved-tag');
+      const progressEl = $('progress');
+      const btnPrev = $('btn-prev');
+      const btnNext = $('btn-next');
+      const btnAdd = $('btn-add');
+      const btnExport = $('btn-export');
+      const btnClear = $('btn-clear');
+      const fileInput = $('file-input');
+      const dropEl = $('drop');
+
+      // ——— Storage helpers ————————————————————————————————————————
+      function loadLabel(name) {
+        try {
+          const raw = localStorage.getItem(STORAGE_PREFIX + name);
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      }
+      function saveLabel(name, label) {
+        try {
+          localStorage.setItem(STORAGE_PREFIX + name, JSON.stringify(label));
+        } catch (e) {
+          alert('Could not save label: ' + e.message);
+        }
+      }
+      function clearAllLabels() {
+        for (const k of Object.keys(localStorage)) {
+          if (k.startsWith(STORAGE_PREFIX)) localStorage.removeItem(k);
+        }
+      }
+      function isLabeled(name) {
+        const l = loadLabel(name);
+        return !!(l && Array.isArray(l.lines) && l.lines.length);
+      }
+      function labeledCount() {
+        return photos.filter((p) => isLabeled(p.name)).length;
+      }
+
+      // ——— File ingestion ————————————————————————————————————————
+      btnAdd.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => addFiles(e.target.files));
+      ['dragover', 'dragenter'].forEach((ev) =>
+        dropEl.addEventListener(ev, (e) => {
+          e.preventDefault();
+          dropEl.classList.add('drag');
+        }),
+      );
+      ['dragleave', 'drop'].forEach((ev) =>
+        dropEl.addEventListener(ev, () => dropEl.classList.remove('drag')),
+      );
+      dropEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        // DataTransfer items can include directories on supported browsers.
+        const items = e.dataTransfer?.items;
+        if (items && items[0]?.webkitGetAsEntry) {
+          const tasks = [];
+          for (const item of items) {
+            const entry = item.webkitGetAsEntry?.();
+            if (entry) tasks.push(walkEntry(entry));
+          }
+          Promise.all(tasks).then((arrs) => addFiles(arrs.flat()));
+        } else {
+          addFiles(e.dataTransfer?.files || []);
+        }
+      });
+
+      function walkEntry(entry, prefix = '') {
+        return new Promise((resolve) => {
+          if (entry.isFile) {
+            entry.file((f) => {
+              // Preserve subfolder context in the filename so users
+              // can label across nested directories.
+              const renamed = prefix ? new File([f], `${prefix}/${f.name}`, { type: f.type }) : f;
+              resolve([renamed]);
+            });
+          } else if (entry.isDirectory) {
+            const reader = entry.createReader();
+            reader.readEntries((entries) => {
+              Promise.all(entries.map((e) => walkEntry(e, prefix ? `${prefix}/${entry.name}` : entry.name))).then((arrs) =>
+                resolve(arrs.flat()),
+              );
+            });
+          } else {
+            resolve([]);
+          }
+        });
+      }
+
+      function addFiles(fileList) {
+        const arr = Array.from(fileList || []).filter((f) => f.type?.startsWith('image/'));
+        if (!arr.length) return;
+        for (const f of arr) {
+          // Dedupe by name; keep the first.
+          if (photos.some((p) => p.name === f.name)) continue;
+          photos.push({ name: f.name, blob: f, url: URL.createObjectURL(f) });
+        }
+        photos.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        if (panel.hidden) {
+          panel.hidden = false;
+          empty.style.display = 'none';
+        }
+        index = Math.min(index, photos.length - 1);
+        btnExport.disabled = photos.length === 0;
+        btnClear.disabled = photos.length === 0;
+        showCurrent();
+      }
+
+      // ——— Render current ————————————————————————————————————————
+      function showCurrent() {
+        if (!photos.length) return;
+        const p = photos[index];
+        // Image
+        let img = stage.querySelector('img');
+        if (!img) {
+          stage.innerHTML = '';
+          img = document.createElement('img');
+          stage.appendChild(img);
+        }
+        img.src = p.url;
+        img.alt = p.name;
+        // Label
+        const label = loadLabel(p.name) || {};
+        linesEl.value = (label.lines || []).join('\n');
+        langEl.value = label.language || 'en';
+        lightEl.value = label.lighting || 'indoor';
+        notesEl.value = label.notes || '';
+        filenameEl.textContent = p.name;
+        savedTagEl.className = 'saved-tag ' + (isLabeled(p.name) ? 'done' : 'todo');
+        savedTagEl.textContent = isLabeled(p.name) ? 'saved' : 'unsaved';
+        btnPrev.disabled = index === 0;
+        btnNext.disabled = index === photos.length - 1;
+        progressEl.innerHTML = `<span class="done">${labeledCount()}</span> / ${photos.length} labeled`;
+      }
+
+      // ——— Autosave ————————————————————————————————————————————————
+      // Save on every input event with a 300ms debounce so we don't
+      // hammer localStorage on each keystroke.
+      let saveTimer = null;
+      function persistCurrent() {
+        if (!photos.length) return;
+        const p = photos[index];
+        const lines = linesEl.value
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .filter(Boolean);
+        const label = {
+          image: p.name,
+          lines,
+          language: langEl.value,
+          lighting: lightEl.value,
+          notes: notesEl.value.trim() || undefined,
+          savedAt: new Date().toISOString(),
+        };
+        if (lines.length) {
+          saveLabel(p.name, label);
+          savedTagEl.className = 'saved-tag done';
+          savedTagEl.textContent = 'saved';
+        } else {
+          // Empty label: remove any prior save so isLabeled() is correct.
+          localStorage.removeItem(STORAGE_PREFIX + p.name);
+          savedTagEl.className = 'saved-tag todo';
+          savedTagEl.textContent = 'unsaved';
+        }
+        progressEl.innerHTML = `<span class="done">${labeledCount()}</span> / ${photos.length} labeled`;
+        dirty = false;
+      }
+      function schedulePersist() {
+        dirty = true;
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(persistCurrent, 300);
+      }
+      [linesEl, langEl, lightEl, notesEl].forEach((el) =>
+        el.addEventListener('input', schedulePersist),
+      );
+
+      // ——— Navigation ————————————————————————————————————————————
+      function goto(newIndex) {
+        if (newIndex < 0 || newIndex >= photos.length) return;
+        if (dirty) persistCurrent();
+        index = newIndex;
+        showCurrent();
+        linesEl.focus();
+      }
+      btnPrev.addEventListener('click', () => goto(index - 1));
+      btnNext.addEventListener('click', () => goto(index + 1));
+      document.addEventListener('keydown', (e) => {
+        // Avoid swallowing typing in the textarea/inputs.
+        const target = e.target;
+        const inField = target.tagName === 'TEXTAREA' || target.tagName === 'INPUT';
+        if (e.metaKey || e.ctrlKey) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            persistCurrent();
+            goto(index + 1);
+          }
+          return;
+        }
+        if (inField && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+          if (target === linesEl) return; // let arrow move cursor in textarea
+          e.preventDefault();
+          goto(index - 1);
+        }
+        if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+          if (target === linesEl) return;
+          e.preventDefault();
+          goto(index + 1);
+        }
+      });
+
+      // ——— Export ————————————————————————————————————————————————
+      btnExport.addEventListener('click', () => {
+        if (dirty) persistCurrent();
+        const rows = [];
+        for (const p of photos) {
+          const l = loadLabel(p.name);
+          if (!l || !l.lines?.length) continue;
+          rows.push(JSON.stringify(l));
+        }
+        if (!rows.length) {
+          alert('No labels to export yet.');
+          return;
+        }
+        const blob = new Blob([rows.join('\n') + '\n'], { type: 'application/x-ndjson' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'labels.jsonl';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      });
+
+      // ——— Clear ————————————————————————————————————————————————
+      btnClear.addEventListener('click', () => {
+        if (!confirm('Clear ALL labels (and unload current photos)? This cannot be undone.')) return;
+        clearAllLabels();
+        for (const p of photos) URL.revokeObjectURL(p.url);
+        photos = [];
+        index = 0;
+        panel.hidden = true;
+        stage.innerHTML = '';
+        stage.appendChild(empty);
+        empty.style.display = '';
+        progressEl.textContent = '';
+        btnExport.disabled = true;
+        btnClear.disabled = true;
+      });
+
+      // Warn before close if there are unsaved keystrokes.
+      window.addEventListener('beforeunload', (e) => {
+        if (dirty) {
+          persistCurrent();
+          e.preventDefault();
+        }
+      });
+    </script>
+  </body>
+</html>
