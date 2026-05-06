@@ -22,8 +22,70 @@
     </style>
   </head>
   <body>
-    <header data-topbar></header>
-    <div class="page-wrap" id="me-root"></div>
+    <header data-topbar>
+      <!-- Static fallback nav so the topbar shows even if JS fails to mount it. -->
+      <a
+        href="./"
+        style="
+          font-style: italic;
+          font-weight: 800;
+          font-size: 22px;
+          text-decoration: none;
+          color: #1a1613;
+        "
+      >
+        OpenBookMap<span style="color: #a8321c">.</span>
+      </a>
+      <nav
+        style="
+          font-family: 'DM Mono', monospace;
+          font-size: 12px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        "
+      >
+        <a href="./map.html" style="color: #3a332c; text-decoration: none; padding: 6px 10px"
+          >Map</a
+        >
+        <a href="./search.html" style="color: #3a332c; text-decoration: none; padding: 6px 10px"
+          >Search</a
+        >
+        <a
+          href="./contribute.html"
+          style="
+            background: #1a1613;
+            color: #f4ecd8;
+            text-decoration: none;
+            padding: 6px 10px;
+            border-radius: 2px;
+          "
+          >Contribute</a
+        >
+      </nav>
+    </header>
+    <div class="page-wrap" id="me-root">
+      <!-- Static fallback so the page is never blank. JS overwrites this
+           once Supabase resolves; if JS throws, the user still sees this. -->
+      <div
+        style="
+          background: #fbf5e4;
+          border: 1px solid #1a16131a;
+          padding: 22px;
+          border-radius: 2px;
+          margin-top: 80px;
+        "
+      >
+        <h2 style="font-size: 22px; font-weight: 600; margin-bottom: 10px">
+          Loading your contributions…
+        </h2>
+        <p style="color: #3a332c; font-size: 14px">
+          If this message stays, JavaScript may have failed to load or your browser is blocking it.
+          Try the
+          <a href="./map.html" style="color: #1a1613">map</a> directly, or
+          <a href="./contribute.html" style="color: #1a1613">sign in</a> from the contribute page.
+        </p>
+      </div>
+    </div>
     <footer data-footer></footer>
     <script type="module" src="/src/pages/me.js"></script>
   </body>

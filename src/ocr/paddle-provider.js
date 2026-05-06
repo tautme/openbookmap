@@ -4,9 +4,11 @@ import { splitOcrIntoTitles } from './index.js';
  * PaddleOCR-via-ONNX provider. Lazy-loads ~16 MB of detection + recognition
  * models from `${BASE_URL}ocr-models/` on first use; never loaded on /map.
  *
- * Spines come in many orientations; OCR is far better on horizontal text.
- * extractTitles() runs OCR on the original plus 90° CCW and 90° CW rotations
- * and keeps the result with the highest mean recognition confidence.
+ * Spines are typically vertical, with text reading bottom-to-top. PaddleOCR
+ * does much better on horizontal text, so we rotate the image 90° CCW before
+ * recognition. If a contributor's photo is already horizontal, the rotated
+ * frame is just sideways text — Paddle still handles it OK, just less well.
+ * Single rotation, single OCR pass; predictable speed.
  *
  * Models live under /public/ocr-models/ so Vite copies them to the build
  * output. We resolve their URL via Vite's BASE_URL so they work under any
@@ -86,26 +88,12 @@ async function ocrOnce(image) {
  * @returns {Promise<{raw: string, titles: string[], rotation: number}>}
  */
 export async function extractTitles(image) {
-  // Sequenced (not parallel) because the ORT session can't run more than
-  // one inference at a time and we want predictable peak memory.
-  const candidates = [];
-  for (const deg of [0, -90, 90]) {
-    const rotated = deg === 0 ? image : await rotateBlob(image, deg);
-    const result = await ocrOnce(rotated);
-    candidates.push({ ...result, rotation: deg });
-  }
-
-  // Pick by mean confidence first; if all zero, fall back to line count.
-  const best = candidates.reduce((b, c) => {
-    if (!b) return c;
-    if (c.meanConf !== b.meanConf) return c.meanConf > b.meanConf ? c : b;
-    return c.lines.length > b.lines.length ? c : b;
-  }, null);
-
-  const text = best.lines.map((l) => l.text).join('\n');
+  const rotated = await rotateBlob(image, -90);
+  const { lines } = await ocrOnce(rotated);
+  const text = lines.map((l) => l.text).join('\n');
   return {
     raw: text,
     titles: splitOcrIntoTitles(text),
-    rotation: best.rotation,
+    rotation: -90,
   };
 }
