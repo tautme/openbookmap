@@ -11,26 +11,69 @@ import { strings } from '../lib/strings.js';
 import { showError, showSuccess, clearStatus } from '../lib/errors.js';
 import { installAnalytics } from '../lib/analytics.js';
 
-installAnalytics();
-mountTopbar({ active: 'me' });
-mountFooter();
-
 const root = document.getElementById('me-root');
+
+// Three layers of error containment. The static HTML in me.html paints
+// a fallback before any JS runs. Each of the synchronous setup calls is
+// wrapped so a failure there leaves the static fallback in place and
+// logs a real error. The async render() has its own .catch() that
+// surfaces the failure visually.
+
+function showRenderError(err) {
+  console.error('me page failed', err);
+  if (!root) return;
+  root.innerHTML = `
+    <div class="card">
+      <h2>${escapeHtml(strings.errors?.generic ?? 'Something went wrong.')}</h2>
+      <p style="color:var(--ink-soft);font-size:13px;margin-top:8px">
+        ${escapeHtml(err?.message || String(err))}
+      </p>
+      <p style="margin-top:14px">
+        <a class="btn" href="./map.html">Back to map</a>
+      </p>
+    </div>`;
+}
+
+try {
+  installAnalytics();
+} catch (e) {
+  console.error('analytics init failed', e);
+}
+try {
+  mountTopbar({ active: 'me' });
+} catch (e) {
+  console.error('topbar mount failed', e);
+}
+try {
+  mountFooter();
+} catch (e) {
+  console.error('footer mount failed', e);
+}
 
 // /me shows the signed-in user. /me.html?name=adam shows another user's public profile.
 const params = new URLSearchParams(location.search);
 const viewingUsername = params.get('name');
 
-supabase.auth.onAuthStateChange(() => render());
-render();
+supabase.auth.onAuthStateChange(() => render().catch(showRenderError));
+render().catch(showRenderError);
 
 async function render() {
-  const { data: auth } = await supabase.auth.getUser();
+  // Pre-paint a loading state so the page is never blank while we wait
+  // on Supabase. This overwrites the static HTML fallback in me.html.
+  root.innerHTML = `<div class="empty">Loading…</div>`;
+
+  const { data: auth, error: authErr } = await supabase.auth.getUser();
+  if (authErr) {
+    // getUser() returns an error for the anonymous case in some Supabase
+    // versions. Treat any auth-not-found error as "signed out", not fatal.
+    if (!/auth session missing|JWT|not authenticated/i.test(authErr.message || '')) {
+      throw authErr;
+    }
+  }
   const me = auth?.user ?? null;
 
   if (viewingUsername) {
-    renderOther(viewingUsername);
-    return;
+    return renderOther(viewingUsername);
   }
   if (!me) {
     root.innerHTML = `
@@ -42,7 +85,7 @@ async function render() {
       </div>`;
     return;
   }
-  renderSelf(me);
+  return renderSelf(me);
 }
 
 async function renderSelf(user) {
@@ -203,7 +246,7 @@ function wireDeleteButtons(photos, _books) {
         alert(strings.me.deleteFailed);
         return;
       }
-      render();
+      render().catch(showRenderError);
     });
   });
   document.querySelectorAll('[data-delete-book]').forEach((btn) => {
@@ -215,7 +258,7 @@ function wireDeleteButtons(photos, _books) {
         alert(strings.me.deleteFailed);
         return;
       }
-      render();
+      render().catch(showRenderError);
     });
   });
 }
