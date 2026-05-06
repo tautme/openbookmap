@@ -21,10 +21,29 @@ const root = document.getElementById('me-root');
 const params = new URLSearchParams(location.search);
 const viewingUsername = params.get('name');
 
-supabase.auth.onAuthStateChange(() => render());
-render();
+supabase.auth.onAuthStateChange(() => render().catch(showRenderError));
+render().catch(showRenderError);
+
+function showRenderError(err) {
+  console.error('me render failed', err);
+  root.innerHTML = `
+    <div class="card">
+      <h2>${escapeHtml(strings.errors.generic)}</h2>
+      <p style="color:var(--ink-soft);font-size:13px;margin-top:8px">
+        ${escapeHtml(err?.message || String(err))}
+      </p>
+      <p style="margin-top:14px">
+        <a class="btn" href="./map.html">Back to map</a>
+      </p>
+    </div>`;
+}
 
 async function render() {
+  // Show something immediately so the page is never blank while we
+  // wait on Supabase.
+  if (!root.innerHTML) {
+    root.innerHTML = `<div class="empty">Loading…</div>`;
+  }
   const { data: auth } = await supabase.auth.getUser();
   const me = auth?.user ?? null;
 
