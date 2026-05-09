@@ -13,13 +13,12 @@ import { installAnalytics } from '../lib/analytics.js';
 
 const root = document.getElementById('me-root');
 
-// Three layers of error containment. The static HTML in me.html paints
-// a fallback before any JS runs. Each of the synchronous setup calls is
-// wrapped so a failure there leaves the static fallback in place and
-// logs a real error. The async render() has its own .catch() that
-// surfaces the failure visually.
+// Per-section query timeout. A misconfigured Supabase or a stalled network
+// would otherwise leave the page hung on "Loading…" forever. Sections that
+// time out render their own error state; the rest keep going.
+const SECTION_TIMEOUT_MS = 10000;
 
-function showRenderError(err) {
+function fatalError(err) {
   console.error('me page failed', err);
   if (!root) return;
   root.innerHTML = `
@@ -54,27 +53,32 @@ try {
 const params = new URLSearchParams(location.search);
 const viewingUsername = params.get('name');
 
-supabase.auth.onAuthStateChange(() => render().catch(showRenderError));
-render().catch(showRenderError);
+supabase.auth.onAuthStateChange(() => start().catch(fatalError));
+start().catch(fatalError);
 
-async function render() {
-  // Pre-paint a loading state so the page is never blank while we wait
-  // on Supabase. This overwrites the static HTML fallback in me.html.
-  root.innerHTML = `<div class="empty">Loading…</div>`;
-
-  const { data: auth, error: authErr } = await supabase.auth.getUser();
-  if (authErr) {
-    // getUser() returns an error for the anonymous case in some Supabase
-    // versions. Treat any auth-not-found error as "signed out", not fatal.
-    if (!/auth session missing|JWT|not authenticated/i.test(authErr.message || '')) {
-      throw authErr;
-    }
-  }
-  const me = auth?.user ?? null;
-
+async function start() {
   if (viewingUsername) {
+    root.innerHTML = `<div class="empty">Loading profile @${escapeHtml(viewingUsername)}…</div>`;
     return renderOther(viewingUsername);
   }
+
+  // Resolve the auth user with its own timeout so we never hang here.
+  let me = null;
+  try {
+    const { data, error } = await withTimeout(
+      supabase.auth.getUser(),
+      SECTION_TIMEOUT_MS,
+      'auth.getUser',
+    );
+    if (error && !/auth session missing|JWT|not authenticated/i.test(error.message || '')) {
+      throw error;
+    }
+    me = data?.user ?? null;
+  } catch (err) {
+    fatalError(err);
+    return;
+  }
+
   if (!me) {
     root.innerHTML = `
       <div class="card">
@@ -85,81 +89,246 @@ async function render() {
       </div>`;
     return;
   }
-  return renderSelf(me);
+
+  renderSelf(me);
 }
 
-async function renderSelf(user) {
-  // Profile row should exist (auth trigger creates it). Load it for edit.
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, username, display_name, bio, avatar_url')
-    .eq('id', user.id)
-    .single();
+/**
+ * Run a promise but reject after `ms` if it doesn't settle. This is a
+ * timeout — the underlying query may still complete, but we stop
+ * waiting on it.
+ */
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, rej) => {
+    timer = setTimeout(() => rej(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
-  const [{ data: photos }, { data: books }] = await Promise.all([
-    supabase
-      .from('photos')
-      .select('id, storage_path, thumb_path, shelf_label, created_at, shop_id')
-      .eq('uploader_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(60),
-    supabase
-      .from('books')
-      .select('id, title, author, created_at, shop_id')
-      .eq('contributor_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(60),
-  ]);
-
-  const total = (photos?.length ?? 0) + (books?.length ?? 0);
-
+/**
+ * Paint the page in sections. Each section shows the user's data
+ * independently — a slow or failing query in one place does not
+ * block the others.
+ */
+function renderSelf(user) {
+  // Frame: paint everything we already know synchronously, with
+  // placeholders for the rest. The user immediately sees their
+  // email and account info, even if Supabase's other endpoints stall.
   root.innerHTML = `
-    <div class="card">
-      <div class="card-eyebrow">${escapeHtml(user.email)}</div>
-      <h2 style="font-size:28px;font-weight:600;letter-spacing:-0.01em;margin-top:6px">
-        ${escapeHtml(profile?.display_name || profile?.username || 'Your contributions')}
-      </h2>
-      <form id="profile-form" style="margin-top:16px">
-        <label style="display:block;font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px">
-          ${escapeHtml(strings.me.usernameLabel)}
-        </label>
-        <input id="username" class="input" type="text" pattern="[a-z0-9\\-]{3,24}" value="${escapeAttr(profile?.username || '')}" placeholder="your-handle" />
-        <label style="display:block;font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-soft);margin-top:14px;margin-bottom:6px">
-          ${escapeHtml(strings.me.bioLabel)}
-        </label>
-        <textarea id="bio" class="input" rows="3" style="font-family:var(--font-serif);font-size:15px">${escapeHtml(profile?.bio || '')}</textarea>
-        <div id="profile-status" hidden></div>
-        <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
-          <button type="submit" class="btn stamp">${escapeHtml(strings.me.save)}</button>
-          <a href="#" id="signout" style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.1em">${escapeHtml(strings.contribute.signOut)}</a>
-        </div>
-      </form>
+    <div class="card" id="account-card">${accountHtml(user)}</div>
+    <div class="card" id="profile-card">
+      <h3 class="card-heading">Profile</h3>
+      <div class="empty" id="profile-status">Loading profile…</div>
     </div>
-
-    <div class="card">
-      <h3 class="card-heading">
-        ${escapeHtml(strings.me.photosHeading)} · ${photos?.length ?? 0}
-      </h3>
-      ${renderMyPhotos(photos)}
+    <div class="card" id="photos-card">
+      <h3 class="card-heading" id="photos-heading">Photos</h3>
+      <div class="empty" id="photos-status">Loading photos…</div>
     </div>
-
-    <div class="card">
-      <h3 class="card-heading">
-        ${escapeHtml(strings.me.booksHeading)} · ${books?.length ?? 0}
-      </h3>
-      ${renderMyBooks(books)}
+    <div class="card" id="books-card">
+      <h3 class="card-heading" id="books-heading">Books</h3>
+      <div class="empty" id="books-status">Loading books…</div>
     </div>
-
-    ${total === 0 ? `<div class="empty">${escapeHtml(strings.me.noContributions)}</div>` : ''}
   `;
 
-  wireProfileForm();
-  wireDeleteButtons(photos, books);
-  const signout = document.getElementById('signout');
-  signout?.addEventListener('click', async (e) => {
+  // Each section loads on its own. Failures are caught locally and
+  // surfaced inside the section, never bubbling up to take the whole
+  // page down.
+  loadProfile(user).catch((e) => sectionError('profile', e));
+  loadPhotos(user).catch((e) => sectionError('photos', e));
+  loadBooks(user).catch((e) => sectionError('books', e));
+}
+
+function sectionError(name, err) {
+  console.error(`me · ${name} failed`, err);
+  const el = document.getElementById(`${name}-status`);
+  if (el) {
+    el.classList.remove('empty');
+    el.classList.add('status', 'error');
+    el.textContent = `Could not load ${name}: ${err?.message || err}`;
+  }
+}
+
+// ——— Account section (synchronous, never fails) ————————————————————
+function accountHtml(user) {
+  // Show every reliable field on the auth user object. We do not
+  // attempt to touch the database here — this is the part that
+  // works even if every other Supabase endpoint is broken.
+  const created = user.created_at ? new Date(user.created_at).toLocaleString() : '—';
+  const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : '—';
+  const meta = user.user_metadata || {};
+  const app = user.app_metadata || {};
+  const identities = (user.identities || []).map((i) => i.provider).filter(Boolean);
+
+  return `
+    <div class="card-eyebrow">Signed in</div>
+    <h2 style="font-size:28px;font-weight:600;letter-spacing:-0.01em;margin-top:6px">
+      ${escapeHtml(user.email || '(no email on record)')}
+    </h2>
+    <dl style="margin-top:14px;display:grid;grid-template-columns:140px 1fr;gap:8px 14px;font-size:14px;line-height:1.5">
+      <dt style="color:var(--ink-soft)">User ID</dt>
+      <dd style="font-family:var(--font-mono);font-size:12px;word-break:break-all">${escapeHtml(user.id)}</dd>
+
+      <dt style="color:var(--ink-soft)">Email confirmed</dt>
+      <dd>${user.email_confirmed_at ? 'yes · ' + escapeHtml(new Date(user.email_confirmed_at).toLocaleDateString()) : 'no'}</dd>
+
+      <dt style="color:var(--ink-soft)">Created</dt>
+      <dd>${escapeHtml(created)}</dd>
+
+      <dt style="color:var(--ink-soft)">Last sign-in</dt>
+      <dd>${escapeHtml(lastSignIn)}</dd>
+
+      ${
+        identities.length
+          ? `<dt style="color:var(--ink-soft)">Sign-in methods</dt>
+             <dd>${identities.map((p) => escapeHtml(p)).join(', ')}</dd>`
+          : ''
+      }
+
+      ${
+        Object.keys(meta).length
+          ? `<dt style="color:var(--ink-soft)">User metadata</dt>
+             <dd><pre style="font-family:var(--font-mono);font-size:12px;background:var(--paper-deep);padding:8px;border-radius:4px;overflow-x:auto;margin:0">${escapeHtml(JSON.stringify(meta, null, 2))}</pre></dd>`
+          : ''
+      }
+
+      ${
+        Object.keys(app).length
+          ? `<dt style="color:var(--ink-soft)">App metadata</dt>
+             <dd><pre style="font-family:var(--font-mono);font-size:12px;background:var(--paper-deep);padding:8px;border-radius:4px;overflow-x:auto;margin:0">${escapeHtml(JSON.stringify(app, null, 2))}</pre></dd>`
+          : ''
+      }
+    </dl>
+    <div style="margin-top:14px">
+      <a href="#" id="signout" class="btn secondary">${escapeHtml(strings.contribute.signOut)}</a>
+    </div>
+  `;
+}
+
+// Wire signout after the account card paints. Done lazily because
+// the inline render() above doesn't have a reliable hook.
+document.addEventListener(
+  'click',
+  (e) => {
+    if (e.target?.id !== 'signout') return;
     e.preventDefault();
-    await supabase.auth.signOut();
+    supabase.auth.signOut();
+  },
+  true,
+);
+
+// ——— Profile section ———————————————————————————————————————————
+async function loadProfile(user) {
+  const card = document.getElementById('profile-card');
+  if (!card) return;
+
+  let profile = null;
+  try {
+    const { data, error } = await withTimeout(
+      supabase
+        .from('profiles')
+        .select('id, username, display_name, bio, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle(),
+      SECTION_TIMEOUT_MS,
+      'profiles query',
+    );
+    if (error) throw error;
+    profile = data;
+  } catch (err) {
+    sectionError('profile', err);
+    return;
+  }
+
+  // Profile may legitimately not exist yet (the auth trigger creates one,
+  // but not every install has the trigger wired). Render the editor
+  // unconditionally — it can save a new row.
+  card.innerHTML = `
+    <h3 class="card-heading">Profile</h3>
+    <form id="profile-form">
+      <label style="display:block;font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px">
+        ${escapeHtml(strings.me.usernameLabel)}
+      </label>
+      <input id="username" class="input" type="text" pattern="[a-z0-9\\-]{3,24}" value="${escapeAttr(profile?.username || '')}" placeholder="your-handle" />
+
+      <label style="display:block;font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-soft);margin-top:14px;margin-bottom:6px">
+        Display name
+      </label>
+      <input id="display_name" class="input" type="text" value="${escapeAttr(profile?.display_name || '')}" placeholder="What should we show on your contributions?" />
+
+      <label style="display:block;font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-soft);margin-top:14px;margin-bottom:6px">
+        ${escapeHtml(strings.me.bioLabel)}
+      </label>
+      <textarea id="bio" class="input" rows="3" style="font-family:var(--font-serif);font-size:15px">${escapeHtml(profile?.bio || '')}</textarea>
+
+      <div id="profile-status" hidden></div>
+      <div style="margin-top:12px">
+        <button type="submit" class="btn stamp">${escapeHtml(strings.me.save)}</button>
+      </div>
+    </form>
+  `;
+  wireProfileForm(user);
+}
+
+function wireProfileForm(user) {
+  const form = document.getElementById('profile-form');
+  const statusEl = document.getElementById('profile-status');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearStatus(statusEl);
+    const username = document.getElementById('username').value.trim().toLowerCase();
+    const display_name = document.getElementById('display_name').value.trim();
+    const bio = document.getElementById('bio').value.trim();
+
+    const payload = {
+      id: user.id,
+      username: username || null,
+      display_name: display_name || null,
+      bio: bio || null,
+    };
+    // Upsert handles both first-time creation and updates.
+    const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
+    if (error) {
+      if (error.code === '23505') {
+        showError(statusEl, strings.me.usernameTaken, error);
+      } else {
+        showError(statusEl, strings.me.saveFailed, error);
+      }
+      return;
+    }
+    showSuccess(statusEl, strings.me.savedSuccess);
   });
+}
+
+// ——— Photos section ————————————————————————————————————————————
+async function loadPhotos(user) {
+  const card = document.getElementById('photos-card');
+  if (!card) return;
+  let photos = [];
+  try {
+    const { data, error } = await withTimeout(
+      supabase
+        .from('photos')
+        .select('id, storage_path, thumb_path, shelf_label, created_at, shop_id')
+        .eq('uploader_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(60),
+      SECTION_TIMEOUT_MS,
+      'photos query',
+    );
+    if (error) throw error;
+    photos = data || [];
+  } catch (err) {
+    sectionError('photos', err);
+    return;
+  }
+
+  card.innerHTML = `
+    <h3 class="card-heading">Photos · ${photos.length}</h3>
+    ${renderMyPhotos(photos)}
+  `;
+  wireDeletePhotos(photos);
 }
 
 function renderMyPhotos(photos) {
@@ -180,75 +349,80 @@ function renderMyPhotos(photos) {
   );
 }
 
-function renderMyBooks(books) {
-  if (!books?.length) return `<div class="empty">No titles yet.</div>`;
-  return (
-    '<ul class="book-list">' +
-    books
-      .map(
-        (b) =>
-          `<li>
-             <span class="title">${escapeHtml(b.title)}</span>
-             <span class="author">
-               ${escapeHtml(b.author || '')} · ${escapeHtml(timeAgo(b.created_at))}
-               <button class="btn secondary" data-delete-book="${escapeAttr(b.id)}" style="margin-left:8px;padding:2px 6px;font-size:10px">delete</button>
-             </span>
-           </li>`,
-      )
-      .join('') +
-    '</ul>'
-  );
-}
-
-function wireProfileForm() {
-  const form = document.getElementById('profile-form');
-  const statusEl = document.getElementById('profile-status');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    clearStatus(statusEl);
-    const username = document.getElementById('username').value.trim().toLowerCase();
-    const bio = document.getElementById('bio').value.trim();
-
-    const { data: auth } = await supabase.auth.getUser();
-    const me = auth?.user;
-    if (!me) {
-      showError(statusEl, strings.errors.notSignedIn);
-      return;
-    }
-    const { error } = await supabase
-      .from('profiles')
-      .update({ username: username || null, bio: bio || null })
-      .eq('id', me.id);
-    if (error) {
-      if (error.code === '23505') {
-        showError(statusEl, strings.me.usernameTaken, error);
-      } else {
-        showError(statusEl, strings.me.saveFailed, error);
-      }
-      return;
-    }
-    showSuccess(statusEl, strings.me.savedSuccess);
-  });
-}
-
-function wireDeleteButtons(photos, _books) {
+function wireDeletePhotos(photos) {
   document.querySelectorAll('[data-delete-photo]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       if (!confirm(strings.me.deleteConfirm)) return;
       const id = btn.getAttribute('data-delete-photo');
-      const photo = photos?.find((p) => p.id === id);
-      // Best-effort storage cleanup. The RLS policy on `photos` enforces ownership.
+      const photo = photos.find((p) => p.id === id);
       if (photo?.storage_path) {
-        await supabase.storage.from('shelf-photos').remove([photo.storage_path]);
+        await supabase.storage
+          .from('shelf-photos')
+          .remove([photo.storage_path])
+          .catch(() => {});
       }
       const { error } = await supabase.from('photos').delete().eq('id', id);
       if (error) {
         alert(strings.me.deleteFailed);
         return;
       }
-      render().catch(showRenderError);
+      // Visually remove so the user sees the effect even if a re-fetch
+      // is slow.
+      btn.parentElement?.remove();
     });
   });
+}
+
+// ——— Books section —————————————————————————————————————————————
+async function loadBooks(user) {
+  const card = document.getElementById('books-card');
+  if (!card) return;
+  let books = [];
+  try {
+    const { data, error } = await withTimeout(
+      supabase
+        .from('books')
+        .select('id, title, author, created_at, shop_id')
+        .eq('contributor_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(60),
+      SECTION_TIMEOUT_MS,
+      'books query',
+    );
+    if (error) throw error;
+    books = data || [];
+  } catch (err) {
+    sectionError('books', err);
+    return;
+  }
+
+  card.innerHTML = `
+    <h3 class="card-heading">Books · ${books.length}</h3>
+    ${renderMyBooks(books)}
+  `;
+  wireDeleteBooks();
+}
+
+function renderMyBooks(books) {
+  if (!books?.length) return `<div class="empty">No titles yet.</div>`;
+  return (
+    '<ul class="book-list">' +
+    books
+      .map(
+        (b) => `<li>
+            <span class="title">${escapeHtml(b.title)}</span>
+            <span class="author">
+              ${escapeHtml(b.author || '')} · ${escapeHtml(timeAgo(b.created_at))}
+              <button class="btn secondary" data-delete-book="${escapeAttr(b.id)}" style="margin-left:8px;padding:2px 6px;font-size:10px">delete</button>
+            </span>
+          </li>`,
+      )
+      .join('') +
+    '</ul>'
+  );
+}
+
+function wireDeleteBooks() {
   document.querySelectorAll('[data-delete-book]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       if (!confirm(strings.me.deleteConfirm)) return;
@@ -258,37 +432,66 @@ function wireDeleteButtons(photos, _books) {
         alert(strings.me.deleteFailed);
         return;
       }
-      render().catch(showRenderError);
+      btn.closest('li')?.remove();
     });
   });
 }
 
+// ——— Public profile (/me.html?name=adam) ——————————————————————
 async function renderOther(username) {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, username, display_name, bio')
-    .eq('username', username)
-    .single();
-
+  let profile = null;
+  try {
+    const { data, error } = await withTimeout(
+      supabase
+        .from('profiles')
+        .select('id, username, display_name, bio')
+        .eq('username', username)
+        .maybeSingle(),
+      SECTION_TIMEOUT_MS,
+      'public profile query',
+    );
+    if (error) throw error;
+    profile = data;
+  } catch (err) {
+    fatalError(err);
+    return;
+  }
   if (!profile) {
     root.innerHTML = `<div class="card"><h2>User not found</h2></div>`;
     return;
   }
 
-  const [{ data: photos }, { data: books }] = await Promise.all([
-    supabase
-      .from('photos')
-      .select('id, storage_path, thumb_path')
-      .eq('uploader_id', profile.id)
-      .order('created_at', { ascending: false })
-      .limit(40),
-    supabase
-      .from('books')
-      .select('id, title, author')
-      .eq('contributor_id', profile.id)
-      .order('created_at', { ascending: false })
-      .limit(40),
-  ]);
+  let photos = [],
+    books = [];
+  try {
+    const [p, b] = await Promise.all([
+      withTimeout(
+        supabase
+          .from('photos')
+          .select('id, storage_path, thumb_path')
+          .eq('uploader_id', profile.id)
+          .order('created_at', { ascending: false })
+          .limit(40),
+        SECTION_TIMEOUT_MS,
+        'public photos',
+      ),
+      withTimeout(
+        supabase
+          .from('books')
+          .select('id, title, author')
+          .eq('contributor_id', profile.id)
+          .order('created_at', { ascending: false })
+          .limit(40),
+        SECTION_TIMEOUT_MS,
+        'public books',
+      ),
+    ]);
+    photos = p.data || [];
+    books = b.data || [];
+  } catch (err) {
+    console.error('public profile sections failed', err);
+    // Render whatever we have; sections may end up empty.
+  }
 
   root.innerHTML = `
     <div class="card">
@@ -302,7 +505,18 @@ async function renderOther(username) {
     </div>
     <div class="card">
       <h3 class="card-heading">Books</h3>
-      ${books?.length ? '<ul class="book-list">' + books.map((b) => `<li><span class="title">${escapeHtml(b.title)}</span><span class="author">${escapeHtml(b.author || '')}</span></li>`).join('') + '</ul>' : `<div class="empty">No titles yet.</div>`}
+      ${
+        books.length
+          ? '<ul class="book-list">' +
+            books
+              .map(
+                (b) =>
+                  `<li><span class="title">${escapeHtml(b.title)}</span><span class="author">${escapeHtml(b.author || '')}</span></li>`,
+              )
+              .join('') +
+            '</ul>'
+          : `<div class="empty">No titles yet.</div>`
+      }
     </div>
   `;
 }
