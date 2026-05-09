@@ -32,18 +32,20 @@ copies under `public/ocr-models/` to match.
 
 ## Forcing a provider for testing
 
-Append `?ocr=<name>` to any page URL to override the active provider for
-A/B comparison:
+Append `?ocr=<name>` to `/contribute.html` to pin a specific provider —
+useful while we're still benchmarking OCR options against real spines.
+The pinned provider runs alone (no fallback), so timing and accuracy
+aren't muddied by the chain. The flag is a no-op on other pages, since
+they don't import the OCR module.
 
-- `?ocr=paddle` — PaddleOCR only, no Tesseract fallback.
+- `?ocr=paddle` — PaddleOCR only.
 - `?ocr=tesseract` — Tesseract only.
-- `?ocr=default` — clear the override and restore the paddle→tesseract
-  chain.
+- `?ocr=default` — clear the override; restore the paddle→tesseract chain.
 
 The choice persists in `localStorage` under `obm.ocr`, so subsequent
 navigations keep the override until you pass `?ocr=default` (or clear
-site data). The active override logs a `console.warn` at boot so you
-notice if a stale value is still in effect.
+site data). The active override logs a `console.warn` at boot so a
+stale value can't silently skew a session weeks later.
 
 To register a new name, add it to `NAMED_PROVIDERS` in `index.js`.
 
