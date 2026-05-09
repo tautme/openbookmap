@@ -30,6 +30,23 @@ origin as the page (avoids cross-origin wasm restrictions).
 If you upgrade `onnxruntime-web` or `@gutenye/ocr-models`, refresh the
 copies under `public/ocr-models/` to match.
 
+## Forcing a provider for testing
+
+Append `?ocr=<name>` to any page URL to override the active provider for
+A/B comparison:
+
+- `?ocr=paddle` — PaddleOCR only, no Tesseract fallback.
+- `?ocr=tesseract` — Tesseract only.
+- `?ocr=default` — clear the override and restore the paddle→tesseract
+  chain.
+
+The choice persists in `localStorage` under `obm.ocr`, so subsequent
+navigations keep the override until you pass `?ocr=default` (or clear
+site data). The active override logs a `console.warn` at boot so you
+notice if a stale value is still in effect.
+
+To register a new name, add it to `NAMED_PROVIDERS` in `index.js`.
+
 ## Adding a new provider (e.g. a vision-LLM)
 
 1. Create `my-provider.js` exporting `extractTitles(image, opts)` matching

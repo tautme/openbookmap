@@ -20,7 +20,21 @@
 import { extractTitles as paddleExtract } from './paddle-provider.js';
 import { extractTitles as tesseractExtract } from './tesseract-provider.js';
 
-let active = withFallback(paddleExtract, tesseractExtract);
+const STORAGE_KEY = 'obm.ocr';
+
+// Names accepted by `?ocr=<name>` and persisted in localStorage. A named
+// provider runs alone (no fallback) so A/B comparison is clean; `default`
+// restores the paddle→tesseract chain.
+const NAMED_PROVIDERS = {
+  paddle: paddleExtract,
+  tesseract: tesseractExtract,
+};
+
+let active = defaultProvider();
+
+function defaultProvider() {
+  return withFallback(paddleExtract, tesseractExtract);
+}
 
 /**
  * Swap in a different OCR provider at runtime (e.g. a vision-LLM fallback).
@@ -28,7 +42,7 @@ let active = withFallback(paddleExtract, tesseractExtract);
  * @param {((image: Blob, opts?: object) => Promise<{raw: string, titles: string[]}>) | null} fn
  */
 export function setOcrProvider(fn) {
-  active = fn ?? withFallback(paddleExtract, tesseractExtract);
+  active = fn ?? defaultProvider();
 }
 
 /**
@@ -85,4 +99,54 @@ export function splitOcrIntoTitles(raw) {
     out.push(l);
   }
   return out;
+}
+
+// Boot-time provider selection for testing. Reads `?ocr=<name>` (and
+// persists it to localStorage so the choice survives navigation), or the
+// stored value if no URL param. `?ocr=default` clears the override.
+// Browser-only — vitest imports this module in a node env.
+if (typeof window !== 'undefined') applyProviderOverride();
+
+function applyProviderOverride() {
+  let choice;
+  let source;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('ocr')) {
+      choice = params.get('ocr');
+      source = 'url';
+      try {
+        if (choice && choice !== 'default') {
+          window.localStorage?.setItem(STORAGE_KEY, choice);
+        } else {
+          window.localStorage?.removeItem(STORAGE_KEY);
+        }
+      } catch {
+        // localStorage may be disabled (private mode, sandboxed iframe).
+      }
+    } else {
+      choice = window.localStorage?.getItem(STORAGE_KEY) ?? undefined;
+      source = 'storage';
+    }
+  } catch (err) {
+    console.warn('OCR provider override: failed to read URL/localStorage', err);
+    return;
+  }
+
+  if (!choice || choice === 'default') return;
+
+  const validNames = [...Object.keys(NAMED_PROVIDERS), 'default'].join(', ');
+  const provider = NAMED_PROVIDERS[choice];
+  if (provider) {
+    setOcrProvider(provider);
+    console.warn(
+      `OCR provider override: ${choice} (from ${source}). ` +
+        `Use ?ocr=default to reset. Valid: ${validNames}.`,
+    );
+  } else {
+    console.warn(
+      `Unknown OCR provider "${choice}" (from ${source}). ` +
+        `Valid: ${validNames}. Using default.`,
+    );
+  }
 }
