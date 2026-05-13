@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Spine Scanner — OpenBookMap prototype</title>
+    <style>
+      :root {
+        --bg: #0b0b0d;
+        --fg: #f7f7f5;
+        --muted: #9a9a9a;
+        --accent: #22c55e;
+        --accent-dim: rgba(34, 197, 94, 0.16);
+        --danger: #ef4444;
+        --card: #17171b;
+        --border: #2a2a30;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        min-height: 100vh;
+        overscroll-behavior: none;
+      }
+      body {
+        padding: env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+      header {
+        padding: 16px 20px 8px;
+      }
+      h1 {
+        font-size: 1.1rem;
+        margin: 0 0 4px;
+        letter-spacing: 0.02em;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.85rem;
+        line-height: 1.4;
+      }
+      main {
+        padding: 12px 20px 32px;
+        max-width: 720px;
+        margin: 0 auto;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      label {
+        display: block;
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      input[type='text'] {
+        width: 100%;
+        padding: 10px 12px;
+        background: #0e0e12;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--fg);
+        font-size: 1rem;
+        font-family: inherit;
+      }
+      button {
+        font-family: inherit;
+        font-size: 1rem;
+        padding: 12px 18px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--fg);
+        cursor: pointer;
+        font-weight: 500;
+      }
+      button.primary {
+        background: var(--accent);
+        color: #06140b;
+        border-color: var(--accent);
+        font-weight: 600;
+      }
+      button.danger {
+        color: var(--danger);
+        border-color: var(--danger);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      button:active:not(:disabled) {
+        transform: translateY(1px);
+      }
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .controls button {
+        flex: 1;
+      }
+      .stage {
+        position: relative;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        aspect-ratio: 4 / 3;
+        margin-bottom: 12px;
+      }
+      video,
+      canvas#overlay {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      canvas#overlay {
+        pointer-events: none;
+      }
+      .hud {
+        position: absolute;
+        inset: 8px 8px auto 8px;
+        display: flex;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      .pill {
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        color: #fff;
+        line-height: 1.2;
+      }
+      .pill strong {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-right: 4px;
+      }
+      .pill.visible strong {
+        color: var(--accent);
+      }
+      .bursts {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 30%;
+        text-align: center;
+        pointer-events: none;
+      }
+      .burst {
+        display: inline-block;
+        font-size: 4rem;
+        font-weight: 800;
+        color: var(--accent);
+        text-shadow:
+          0 0 24px rgba(0, 0, 0, 0.6),
+          0 2px 6px rgba(0, 0, 0, 0.9);
+        animation: burst 1.2s ease-out forwards;
+      }
+      @keyframes burst {
+        0% {
+          opacity: 0;
+          transform: scale(0.6) translateY(20px);
+        }
+        20% {
+          opacity: 1;
+          transform: scale(1.1) translateY(0);
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.3) translateY(-60px);
+        }
+      }
+      .meta {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-top: 8px;
+        line-height: 1.5;
+      }
+      .meta code {
+        font-family:
+          ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+        font-size: 0.8em;
+        color: var(--fg);
+      }
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .gallery img {
+        width: 100%;
+        aspect-ratio: 2 / 3;
+        object-fit: cover;
+        border-radius: 6px;
+        background: #222;
+      }
+      .totals {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .totals .card {
+        flex: 1;
+        margin: 0;
+        text-align: center;
+        padding: 12px;
+      }
+      .totals .big {
+        font-size: 1.8rem;
+        font-weight: 700;
+      }
+      .totals .sub {
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 2px;
+      }
+      .error {
+        color: var(--danger);
+        font-size: 0.85rem;
+        margin-top: 8px;
+      }
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: #fff;
+        padding: 10px 16px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+        z-index: 100;
+      }
+      .toast.show {
+        opacity: 1;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>📚 Spine Scanner — prototype</h1>
+      <p>
+        Pan over a bookshelf. Live boxes count what's visible. Tap CAPTURE to
+        save the frame + crops + orientation + location for later OCR.
+      </p>
+    </header>
+
+    <main>
+      <section id="setup" class="card">
+        <label for="sessionLabel">Session label (optional)</label>
+        <input
+          id="sessionLabel"
+          type="text"
+          placeholder="e.g. Living room shelf"
+          autocomplete="off"
+        />
+        <p class="meta">
+          Tapping <strong>Start</strong> requests camera, geolocation, and
+          (on iOS) motion-sensor permission. All data stays in your browser
+          (IndexedDB). Nothing is uploaded.
+        </p>
+        <div class="controls">
+          <button id="startBtn" class="primary">Start scanning</button>
+        </div>
+        <div id="setupError" class="error" hidden></div>
+      </section>
+
+      <section id="scanner" hidden>
+        <div class="stage">
+          <video id="video" playsinline muted autoplay></video>
+          <canvas id="overlay"></canvas>
+          <div class="hud">
+            <div class="pill visible">
+              <strong id="visibleCount">0</strong>visible
+            </div>
+            <div class="pill">
+              <strong id="sessionCount">0</strong>scanned
+            </div>
+          </div>
+          <div id="bursts" class="bursts"></div>
+        </div>
+
+        <div class="controls">
+          <button id="captureBtn" class="primary">📸 Capture</button>
+          <button id="stopBtn" class="danger">Stop</button>
+        </div>
+
+        <p id="sensorMeta" class="meta"></p>
+      </section>
+
+      <section id="summary" class="card" hidden>
+        <h2 style="margin-top: 0; font-size: 1rem">Session summary</h2>
+        <div class="totals">
+          <div class="card">
+            <div class="big" id="summarySession">0</div>
+            <div class="sub">This session</div>
+          </div>
+          <div class="card">
+            <div class="big" id="summaryToday">0</div>
+            <div class="sub">Today</div>
+          </div>
+          <div class="card">
+            <div class="big" id="summaryAllTime">0</div>
+            <div class="sub">All time</div>
+          </div>
+        </div>
+        <div id="gallery" class="gallery"></div>
+        <div class="controls">
+          <button id="resetBtn" class="primary">Scan another shelf</button>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script type="module" src="./scan.js"></script>
+  </body>
+</html>

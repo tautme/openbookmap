@@ -1,0 +1,4 @@
+# YOLOv8 weights are ~12 MB and not committed. See ../README.md for how
+# to get yolov8n.onnx into this directory.
+*.onnx
+!.gitignore
