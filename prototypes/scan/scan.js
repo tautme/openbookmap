@@ -17,7 +17,8 @@ ort.env.wasm.wasmPaths =
 // Constants
 // ---------------------------------------------------------------------
 
-const MODEL_URL = './models/yolov8n.onnx';
+const DEFAULT_MODEL_URL = './models/yolov8n.onnx';
+const MODEL_STORAGE_KEY = 'obm.scan.model';
 const INPUT_SIZE = 640;
 const BOOK_CLASS_INDEX = 73; // COCO class "book"
 const SCORE_THRESHOLD = 0.35;
@@ -28,6 +29,41 @@ const DB_NAME = 'obm-scan';
 const DB_VERSION = 1;
 const STORE = 'captures';
 
+// Read `?model=<url>` (and persist to localStorage so the choice survives
+// navigation). `?model=default` clears the override. Returns the URL the
+// page will hand to onnxruntime-web — bare-bones `./models/yolov8n.onnx`
+// by default, anything reachable over HTTPS otherwise.
+function resolveModelUrl() {
+  let chosen = DEFAULT_MODEL_URL;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('model')) {
+      const v = (params.get('model') || '').trim();
+      try {
+        if (v && v !== 'default') {
+          window.localStorage?.setItem(MODEL_STORAGE_KEY, v);
+        } else {
+          window.localStorage?.removeItem(MODEL_STORAGE_KEY);
+        }
+      } catch {
+        // localStorage may be disabled (private mode, sandboxed iframe).
+      }
+      if (v && v !== 'default') chosen = v;
+    } else {
+      const stored = window.localStorage?.getItem(MODEL_STORAGE_KEY);
+      if (stored) chosen = stored;
+    }
+  } catch (err) {
+    console.warn('resolveModelUrl: falling back to default', err);
+  }
+  if (chosen !== DEFAULT_MODEL_URL) {
+    console.warn(
+      `Scan model override: ${chosen}. Use ?model=default to reset.`,
+    );
+  }
+  return chosen;
+}
+
 // ---------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------
@@ -35,6 +71,7 @@ const STORE = 'captures';
 const state = {
   ortSession: null,
   outputKey: null,
+  modelUrl: DEFAULT_MODEL_URL,
   stream: null,
   running: false,
   sessionLabel: '',
@@ -55,6 +92,7 @@ const dom = {
   setup: el('setup'),
   setupError: el('setupError'),
   sessionLabel: el('sessionLabel'),
+  modelHint: el('modelHint'),
   startBtn: el('startBtn'),
   scanner: el('scanner'),
   video: el('video'),
@@ -195,7 +233,7 @@ async function startCamera() {
 // ---------------------------------------------------------------------
 
 async function loadModel() {
-  state.ortSession = await ort.InferenceSession.create(MODEL_URL, {
+  state.ortSession = await ort.InferenceSession.create(state.modelUrl, {
     executionProviders: ['wasm'],
   });
   state.outputKey = state.ortSession.outputNames[0];
@@ -499,6 +537,7 @@ dom.startBtn.addEventListener('click', async () => {
   dom.startBtn.disabled = true;
   dom.startBtn.textContent = 'Starting…';
   try {
+    state.modelUrl = resolveModelUrl();
     state.sessionLabel =
       dom.sessionLabel.value.trim() ||
       `scan-${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
@@ -520,16 +559,29 @@ dom.startBtn.addEventListener('click', async () => {
     detectTick();
   } catch (err) {
     console.error('Failed to start', err);
-    const msg = err?.message || String(err);
-    setSetupError(
-      msg.includes('yolov8n.onnx')
-        ? 'Model not found. Drop yolov8n.onnx into prototypes/scan/models/ (see README).'
-        : `Failed to start: ${msg}`,
-    );
+    setSetupError(modelLoadErrorMessage(err) || `Failed to start: ${err?.message || err}`);
     dom.startBtn.disabled = false;
     dom.startBtn.textContent = 'Start scanning';
   }
 });
+
+function modelLoadErrorMessage(err) {
+  const msg = err?.message || String(err);
+  const looksLikeModelLoad =
+    /onnx|InferenceSession|fetch|protobuf|CORS|Failed to load/i.test(msg);
+  if (!looksLikeModelLoad) return null;
+  const isCustom = state.modelUrl !== DEFAULT_MODEL_URL;
+  if (isCustom) {
+    return (
+      `Couldn't load model from "${state.modelUrl}". ` +
+      `Check the URL is a direct .onnx download served with CORS, or pass ?model=default to reset.`
+    );
+  }
+  return (
+    'Model not found at ./models/yolov8n.onnx. ' +
+    'Drop the file in, or pass ?model=<url> pointing to a hosted yolov8n.onnx (see README).'
+  );
+}
 
 dom.captureBtn.addEventListener('click', capture);
 
@@ -544,3 +596,26 @@ dom.stopBtn.addEventListener('click', async () => {
 });
 
 dom.resetBtn.addEventListener('click', resetToSetup);
+
+// Surface the resolved model URL so the user knows which model will load
+// before they tap Start. Picks up `?model=` URL params and persisted
+// localStorage values; the resolve also runs again on Start in case the
+// user pastes a new ?model= without reloading.
+renderModelHint();
+
+function renderModelHint() {
+  const url = resolveModelUrl();
+  state.modelUrl = url;
+  if (url === DEFAULT_MODEL_URL) {
+    dom.modelHint.innerHTML =
+      'Model: <code>./models/yolov8n.onnx</code> (default). ' +
+      'Pass <code>?model=&lt;https URL&gt;</code> to load from elsewhere.';
+  } else {
+    const safe = url.replace(/[<>&"]/g, (c) =>
+      ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c],
+    );
+    dom.modelHint.innerHTML =
+      `Model: <code>${safe}</code>. ` +
+      'Pass <code>?model=default</code> to reset.';
+  }
+}

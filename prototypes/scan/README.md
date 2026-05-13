@@ -63,6 +63,42 @@ If you can't run Python locally, search the Hugging Face Hub for a
 pre-converted `yolov8n.onnx` (640×640, static shape) and drop it in
 that directory.
 
+## Loading the model from a URL (`?model=`)
+
+If you can host `yolov8n.onnx` somewhere reachable over HTTPS, pass it
+as a URL parameter instead of dropping the file into `models/`:
+
+```
+…/prototypes/scan/?model=https://example.com/path/yolov8n.onnx
+```
+
+The value is persisted in `localStorage` under `obm.scan.model`, so
+subsequent visits reuse it without the param. Reset with
+`?model=default`. The active model URL is shown on the setup screen
+before you tap Start.
+
+This is the path that makes the prototype testable from a hosted
+preview (e.g. `raw.githack.com`) without committing the 12 MB binary to
+the repo. The host must serve the file with permissive **CORS** headers
+— Hugging Face's `…/resolve/main/<file>` URLs work; Google Drive share
+links do not.
+
+## Hosted preview (no local server)
+
+`raw.githack.com` serves any GitHub branch as HTTPS — exactly what the
+camera APIs need. The pattern is:
+
+```
+https://raw.githack.com/<owner>/<repo>/<branch>/prototypes/scan/index.html?model=<your hosted model URL>
+```
+
+Once the prototype is merged into `main`, the deploy workflow stages
+`prototypes/` into the Pages artifact too, so the live URL becomes:
+
+```
+https://<pages-domain>/openbookmap/prototypes/scan/?model=<your hosted model URL>
+```
+
 ## Wiring
 
 - **No build step.** `index.html` loads `scan.js` as an ES module

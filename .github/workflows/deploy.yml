@@ -33,6 +33,13 @@ jobs:
         run: npm run build
       - name: Preserve CNAME (if present)
         run: '[ -f CNAME ] && cp CNAME dist/CNAME || echo "no CNAME, skipping"'
+      - name: Stage prototypes/ into deploy output
+        # Static, no-build experiments under prototypes/ are not part of the
+        # Vite entry list. Copying the directory into dist/ exposes them at
+        # /<repo>/prototypes/<name>/ on Pages. Files ignored by .gitignore
+        # (e.g. *.onnx model weights) are not in the runner's checkout, so
+        # this won't smuggle them into the artifact.
+        run: '[ -d prototypes ] && cp -r prototypes dist/prototypes || echo "no prototypes/, skipping"'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
