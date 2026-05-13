@@ -242,6 +242,58 @@
         font-size: 0.85rem;
         margin-top: 8px;
       }
+      .warning {
+        color: #fbbf24;
+        background: rgba(251, 191, 36, 0.08);
+        border: 1px solid rgba(251, 191, 36, 0.3);
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        margin-top: 12px;
+        line-height: 1.5;
+      }
+      .progress {
+        margin-top: 14px;
+      }
+      .progress-bar {
+        height: 6px;
+        background: #0e0e12;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        background: var(--accent);
+        width: 0%;
+        transition: width 0.15s ease-out;
+      }
+      .progress-fill.indeterminate {
+        animation: indeterminate 1.4s infinite linear;
+        background: linear-gradient(
+          90deg,
+          var(--accent-dim),
+          var(--accent),
+          var(--accent-dim)
+        );
+        background-size: 200% 100%;
+      }
+      @keyframes indeterminate {
+        0% {
+          background-position: 100% 0;
+        }
+        100% {
+          background-position: -100% 0;
+        }
+      }
+      .progress-label {
+        margin: 6px 0 0;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .pill.fps strong {
+        color: #f7f7f5;
+      }
       .toast {
         position: fixed;
         left: 50%;
@@ -289,8 +341,15 @@
           (IndexedDB). Nothing is uploaded.
         </p>
         <p class="meta" id="modelHint"></p>
+        <div id="webgpuWarning" class="warning" hidden></div>
         <div class="controls">
           <button id="startBtn" class="primary">Start scanning</button>
+        </div>
+        <div id="loadingState" class="progress" hidden>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <p class="progress-label" id="progressLabel">Fetching model…</p>
         </div>
         <div id="setupError" class="error" hidden></div>
       </section>
@@ -302,6 +361,9 @@
           <div class="hud">
             <div class="pill visible">
               <strong id="visibleCount">0</strong>visible
+            </div>
+            <div class="pill fps">
+              <strong id="fpsCount">—</strong>fps
             </div>
             <div class="pill">
               <strong id="sessionCount">0</strong>scanned

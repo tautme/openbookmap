@@ -1,10 +1,11 @@
 # Spine Scanner — prototype
 
 A single-page, build-step-free experiment that opens the rear camera,
-runs **YOLOv8n** in the browser, and lets you tap to **count + save**
-the books visible in the current frame. OCR is intentionally *not*
-invoked — this prototype exists to collect captured spine images,
-device orientation, and geolocation for later analysis.
+runs **YOLOv11n** in the browser (WebGPU when available, single-threaded
+WASM otherwise), and lets you tap to **count + save** the books visible
+in the current frame. OCR is intentionally *not* invoked — this
+prototype exists to collect captured spine images, device orientation,
+and geolocation for later analysis.
 
 It is **not** part of the main app's Vite build and is not linked from
 the nav. Live at `prototypes/scan/index.html`.
@@ -12,7 +13,8 @@ the nav. Live at `prototypes/scan/index.html`.
 ## What it does
 
 - Live camera feed with detection boxes drawn over books in real time.
-- Two counters in the HUD: **visible** (current frame, updates ~5×/sec)
+- HUD shows three counters: **visible** (current frame), **fps** (a
+  rolling 1-second window so you can see whether WebGPU kicked in),
   and **scanned** (session total, only ticks up on tap).
 - **Capture** button: saves the full frame + per-detection crops +
   device orientation snapshot + geolocation to **IndexedDB** under the
@@ -43,33 +45,30 @@ iOS requires HTTPS for camera + motion sensors, so on-device testing
 needs a tunnel like `cloudflared` or `ngrok` pointing at your local
 server. Desktop browsers work fine over plain `localhost`.
 
-## Getting the YOLOv8n model
+## The model
 
-The model file is **not** committed to the repo (~12 MB). Place
-`yolov8n.onnx` in `prototypes/scan/models/`. The file must be the
-**standard YOLOv8n COCO export at 640×640 input** — anything else and
-the decoding math in `scan.js` will be wrong.
-
-Easiest source: install Ultralytics in any Python environment and
-export from the official weights:
-
-```bash
-pip install ultralytics
-python -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', imgsz=640, dynamic=False, simplify=True)"
-mv yolov8n.onnx prototypes/scan/models/
-```
-
-If you can't run Python locally, search the Hugging Face Hub for a
-pre-converted `yolov8n.onnx` (640×640, static shape) and drop it in
-that directory.
-
-## Loading the model from a URL (`?model=`)
-
-If you can host `yolov8n.onnx` somewhere reachable over HTTPS, pass it
-as a URL parameter instead of dropping the file into `models/`:
+The default model is fetched at runtime from Hugging Face — no local
+file required:
 
 ```
-…/prototypes/scan/?model=https://example.com/path/yolov8n.onnx
+https://huggingface.co/deepghs/yolos/resolve/main/yolo11n/model.onnx
+```
+
+It's ~10.6 MB and the browser caches the response, so the first load
+shows a progress bar and subsequent loads are instant.
+
+> **Note:** `deepghs/yolos` is a community re-export, not official
+> Ultralytics. On the first inference, `scan.js` logs
+> `Output shape: { ... }` to the console and bails to a UI error if
+> dims aren't `[1, 84, 8400]` — i.e. it won't silently feed wrong-shape
+> output through the COCO decoder.
+
+### Loading a different model (`?model=`)
+
+To try a different export, pass a URL parameter:
+
+```
+…/prototypes/scan/?model=https://example.com/path/your-model.onnx
 ```
 
 The value is persisted in `localStorage` under `obm.scan.model`, so
@@ -77,11 +76,15 @@ subsequent visits reuse it without the param. Reset with
 `?model=default`. The active model URL is shown on the setup screen
 before you tap Start.
 
-This is the path that makes the prototype testable from a hosted
-preview (e.g. `raw.githack.com`) without committing the 12 MB binary to
-the repo. The host must serve the file with permissive **CORS** headers
-— Hugging Face's `…/resolve/main/<file>` URLs work; Google Drive share
+The host must serve the file with permissive **CORS** headers —
+Hugging Face's `…/resolve/main/<file>` URLs work; Google Drive share
 links do not.
+
+### Old path: local `./models/yolov8n.onnx`
+
+The previous version expected a local file. That path still works if
+you pass `?model=./models/yolov8n.onnx` and drop a compatible weights
+file there, but the default is the HF URL above.
 
 ## Hosted preview (no local server)
 
@@ -117,9 +120,9 @@ A few decisions deserve a note:
   second. A real tracker (ByteTrack-class) is a real engineering
   project; tap-to-capture sidesteps the whole problem and matches how
   someone actually scans a shelf — pan, hold, tap, move on.
-- **YOLOv8n COCO, not a custom spine model.** COCO has a "book" class
-  out of the box. Custom training waits for the data this prototype
-  will collect. Class index `73` is hardcoded in `scan.js`.
+- **YOLOv11n COCO, not a custom spine model.** COCO has a "book"
+  class out of the box. Custom training waits for the data this
+  prototype will collect. Class index `73` is hardcoded in `scan.js`.
 - **CDN ort, not vendored.** Keeps the prototype runnable without an
   `npm install` (which is blocked on environments stuck on old npm).
 - **IDB only, no Supabase upload.** Collection layer first. A sync

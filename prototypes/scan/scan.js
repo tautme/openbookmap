@@ -1,15 +1,17 @@
 // Spine Scanner prototype — single-file, no build step.
 //
-// Loads YOLOv8n via onnxruntime-web from a CDN, opens the rear camera,
+// Loads YOLOv11n via onnxruntime-web from a CDN, opens the rear camera,
 // draws live detection boxes, and saves captured frames + crops to
 // IndexedDB. OCR happens later; this is just the collection layer.
 //
-// Model: place yolov8n.onnx in ./models/ (see README).
+// Model: fetched at runtime from Hugging Face (see DEFAULT_MODEL_URL).
+// Override with ?model=<https url> for testing other exports.
 
 import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/ort.bundle.min.mjs';
 
-// Tell ort where the wasm assets live. We use the same CDN so a single
-// fetch warms the cache for both the main JS and the wasm worker.
+// Single-threaded WASM avoids needing COOP/COEP headers — GH Pages and
+// Hugging Face don't serve them. WebGPU (preferred) doesn't care.
+ort.env.wasm.numThreads = 1;
 ort.env.wasm.wasmPaths =
   'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/';
 
@@ -17,22 +19,23 @@ ort.env.wasm.wasmPaths =
 // Constants
 // ---------------------------------------------------------------------
 
-const DEFAULT_MODEL_URL = './models/yolov8n.onnx';
+const DEFAULT_MODEL_URL =
+  'https://huggingface.co/deepghs/yolos/resolve/main/yolo11n/model.onnx';
 const MODEL_STORAGE_KEY = 'obm.scan.model';
 const INPUT_SIZE = 640;
 const BOOK_CLASS_INDEX = 73; // COCO class "book"
-const SCORE_THRESHOLD = 0.35;
+const SCORE_THRESHOLD = 0.4;
 const IOU_THRESHOLD = 0.45;
-const DETECT_INTERVAL_MS = 180; // ~5.5 FPS — plenty for visual feedback
+const DETECT_INTERVAL_MS = 180; // ~5.5 FPS upper bound; actual depends on backend.
 
 const DB_NAME = 'obm-scan';
 const DB_VERSION = 1;
 const STORE = 'captures';
 
 // Read `?model=<url>` (and persist to localStorage so the choice survives
-// navigation). `?model=default` clears the override. Returns the URL the
-// page will hand to onnxruntime-web — bare-bones `./models/yolov8n.onnx`
-// by default, anything reachable over HTTPS otherwise.
+// navigation). `?model=default` clears the override. Default is the
+// YOLOv11n weights from the deepghs/yolos community re-export on
+// Hugging Face — fetched at runtime, ~10.6 MB, cached by the browser.
 function resolveModelUrl() {
   let chosen = DEFAULT_MODEL_URL;
   try {
@@ -81,6 +84,10 @@ const state = {
   orientation: null, // {alpha, beta, gamma, captureTime}
   coords: null, // {lat, lon, accuracy, capturedAt}
   totals: { today: 0, allTime: 0 },
+  // Inference health
+  loggedShape: false,
+  shapeMismatch: null, // populated if first inference returns unexpected dims
+  fpsSamples: [], // timestamps of the last ~30 detection ticks
 };
 
 // ---------------------------------------------------------------------
@@ -93,12 +100,17 @@ const dom = {
   setupError: el('setupError'),
   sessionLabel: el('sessionLabel'),
   modelHint: el('modelHint'),
+  webgpuWarning: el('webgpuWarning'),
   startBtn: el('startBtn'),
+  loadingState: el('loadingState'),
+  progressFill: el('progressFill'),
+  progressLabel: el('progressLabel'),
   scanner: el('scanner'),
   video: el('video'),
   overlay: el('overlay'),
   visibleCount: el('visibleCount'),
   sessionCount: el('sessionCount'),
+  fpsCount: el('fpsCount'),
   bursts: el('bursts'),
   captureBtn: el('captureBtn'),
   stopBtn: el('stopBtn'),
@@ -229,14 +241,69 @@ async function startCamera() {
 }
 
 // ---------------------------------------------------------------------
-// YOLOv8 inference
+// YOLOv8/v11 inference (same output layout)
 // ---------------------------------------------------------------------
 
 async function loadModel() {
-  state.ortSession = await ort.InferenceSession.create(state.modelUrl, {
-    executionProviders: ['wasm'],
+  // Fetch the bytes ourselves so we can show a real progress bar. The
+  // browser still caches the response, so subsequent loads are instant.
+  const bytes = await fetchModelWithProgress(
+    state.modelUrl,
+    onModelProgress,
+  );
+  state.ortSession = await ort.InferenceSession.create(bytes, {
+    // WebGPU first, fall back to WASM (single-threaded; see ort.env above).
+    executionProviders: ['webgpu', 'wasm'],
   });
   state.outputKey = state.ortSession.outputNames[0];
+  console.log('Input names:', state.ortSession.inputNames);
+  console.log('Output names:', state.ortSession.outputNames);
+}
+
+async function fetchModelWithProgress(url, onProgress) {
+  setLoadingState(true, 'Fetching model…', 0);
+  const response = await fetch(url, { cache: 'force-cache' });
+  if (!response.ok) {
+    throw new Error(`Model fetch failed: HTTP ${response.status}`);
+  }
+  const total = Number(response.headers.get('Content-Length')) || 0;
+  const reader = response.body?.getReader?.();
+  // Fallback: no streaming reader available — read all at once.
+  if (!reader) {
+    const buf = await response.arrayBuffer();
+    onProgress(buf.byteLength, buf.byteLength);
+    return new Uint8Array(buf);
+  }
+  const chunks = [];
+  let loaded = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    onProgress(loaded, total);
+  }
+  const merged = new Uint8Array(loaded);
+  let offset = 0;
+  for (const c of chunks) {
+    merged.set(c, offset);
+    offset += c.length;
+  }
+  return merged;
+}
+
+function onModelProgress(loaded, total) {
+  const pct = total > 0 ? Math.min(100, (loaded / total) * 100) : null;
+  const mb = (n) => (n / 1024 / 1024).toFixed(1);
+  if (pct == null) {
+    setLoadingState(true, `Fetching model… ${mb(loaded)} MB`, null);
+  } else {
+    setLoadingState(
+      true,
+      `Fetching model… ${mb(loaded)} / ${mb(total)} MB`,
+      pct,
+    );
+  }
 }
 
 // Preprocess: letterbox the video frame into a 640x640 RGB tensor,
@@ -273,10 +340,12 @@ function preprocess(video) {
   };
 }
 
-// YOLOv8 output shape: [1, 84, 8400]. Layout per anchor:
+// Expected YOLOv8/v11 detection output shape: [1, 84, 8400]. Layout per
+// anchor:
 //   [0..3]  : cx, cy, w, h (in 640x640 letterboxed coords)
-//   [4..83] : 80 COCO class scores (no objectness in v8)
-// We only care about class 73 (book).
+//   [4..83] : 80 COCO class scores (no objectness in v8/v11)
+// We only care about class 73 (book). Variants with NMS baked in (shape
+// like [1, N, 6]) hit the validation path in detectTick first.
 function postprocess(output, letterbox) {
   const data = output.data;
   const numAnchors = output.dims[2];
@@ -344,11 +413,29 @@ async function detectTick() {
       const { tensor, letterbox } = preprocess(dom.video);
       const inputName = state.ortSession.inputNames[0];
       const result = await state.ortSession.run({ [inputName]: tensor });
-      const detections = postprocess(result[state.outputKey], letterbox);
+      const primary = result[state.outputKey];
+
+      if (!state.loggedShape) {
+        state.loggedShape = true;
+        const summary = Object.fromEntries(
+          state.ortSession.outputNames.map((n) => [n, result[n].dims]),
+        );
+        console.log('Output shape (first inference):', summary);
+        const mismatch = expectedShapeMismatch(primary.dims);
+        if (mismatch) {
+          state.shapeMismatch = primary.dims;
+          state.running = false;
+          showShapeMismatchError(primary.dims, mismatch);
+          return;
+        }
+      }
+
+      const detections = postprocess(primary, letterbox);
       state.lastDetections = detections;
       state.visibleCount = detections.length;
       drawOverlay(detections, letterbox);
       dom.visibleCount.textContent = detections.length;
+      recordFpsTick();
     }
   } catch (err) {
     console.error('detect tick failed', err);
@@ -356,6 +443,31 @@ async function detectTick() {
     if (state.running) {
       detectTimer = setTimeout(detectTick, DETECT_INTERVAL_MS);
     }
+  }
+}
+
+function expectedShapeMismatch(dims) {
+  // Standard COCO YOLOv8/v11 export: [1, 84, 8400]. Anything else means
+  // the postprocess decoder can't safely run, so we bail to the UI.
+  if (!Array.isArray(dims) || dims.length !== 3) {
+    return `expected rank 3 [1, 84, 8400], got rank ${dims?.length}`;
+  }
+  if (dims[1] !== 84 || dims[2] !== 8400) {
+    return `expected [1, 84, 8400], got [${dims.join(', ')}]`;
+  }
+  return null;
+}
+
+function recordFpsTick() {
+  const now = performance.now();
+  state.fpsSamples.push(now);
+  // Keep only ticks in the last second.
+  const cutoff = now - 1000;
+  while (state.fpsSamples.length && state.fpsSamples[0] < cutoff) {
+    state.fpsSamples.shift();
+  }
+  if (dom.fpsCount) {
+    dom.fpsCount.textContent = state.fpsSamples.length;
   }
 }
 
@@ -528,6 +640,50 @@ function setSetupError(msg) {
   dom.setupError.hidden = false;
 }
 
+function setLoadingState(visible, label, pct) {
+  if (!dom.loadingState) return;
+  dom.loadingState.hidden = !visible;
+  if (label != null) dom.progressLabel.textContent = label;
+  if (pct == null) {
+    // Indeterminate — no Content-Length. Just show a thin animated bar.
+    dom.progressFill.style.width = '100%';
+    dom.progressFill.classList.add('indeterminate');
+  } else {
+    dom.progressFill.classList.remove('indeterminate');
+    dom.progressFill.style.width = `${pct.toFixed(1)}%`;
+  }
+}
+
+function showShapeMismatchError(dims, reason) {
+  const msg =
+    `Unexpected model output shape — ${reason}. ` +
+    `Got dims [${dims?.join(', ')}]. ` +
+    `Detection halted; tell Claude before patching the decoder.`;
+  console.error(msg);
+  setSetupError(msg);
+  // Bounce back to the setup screen so the warning is visible.
+  state.stream?.getTracks().forEach((t) => t.stop());
+  state.stream = null;
+  if (detectTimer) clearTimeout(detectTimer);
+  dom.scanner.hidden = true;
+  dom.setup.hidden = false;
+  dom.startBtn.disabled = false;
+  dom.startBtn.textContent = 'Start scanning';
+}
+
+function maybeRenderWebGpuWarning() {
+  if (!dom.webgpuWarning) return;
+  if (navigator.gpu) {
+    dom.webgpuWarning.hidden = true;
+    return;
+  }
+  dom.webgpuWarning.innerHTML =
+    '⚠️ <strong>WebGPU unavailable</strong> — will fall back to ' +
+    'single-threaded WASM. Expect &lt; 2 FPS on phones (iOS Safari ' +
+    'before 18, Firefox without flags). Detection still works, just slower.';
+  dom.webgpuWarning.hidden = false;
+}
+
 // ---------------------------------------------------------------------
 // Wire up
 // ---------------------------------------------------------------------
@@ -536,22 +692,28 @@ dom.startBtn.addEventListener('click', async () => {
   setSetupError(null);
   dom.startBtn.disabled = true;
   dom.startBtn.textContent = 'Starting…';
+  state.loggedShape = false;
+  state.shapeMismatch = null;
+  state.fpsSamples = [];
   try {
     state.modelUrl = resolveModelUrl();
     state.sessionLabel =
       dom.sessionLabel.value.trim() ||
       `scan-${new Date().toISOString().slice(0, 16).replace('T', ' ')}`;
-    // Request sensor permissions in parallel with model load.
+    // Request sensor permissions in parallel with model load. Model load
+    // owns the progress UI; the others just complete in the background.
     await Promise.all([
       requestOrientation(),
       requestGeo(),
       loadModel(),
       startCamera(),
     ]);
+    setLoadingState(false);
     await refreshTotals();
     state.sessionCount = 0;
     dom.sessionCount.textContent = 0;
     dom.visibleCount.textContent = 0;
+    if (dom.fpsCount) dom.fpsCount.textContent = '—';
     updateSensorMeta();
     dom.setup.hidden = true;
     dom.scanner.hidden = false;
@@ -559,6 +721,7 @@ dom.startBtn.addEventListener('click', async () => {
     detectTick();
   } catch (err) {
     console.error('Failed to start', err);
+    setLoadingState(false);
     setSetupError(modelLoadErrorMessage(err) || `Failed to start: ${err?.message || err}`);
     dom.startBtn.disabled = false;
     dom.startBtn.textContent = 'Start scanning';
@@ -568,18 +731,14 @@ dom.startBtn.addEventListener('click', async () => {
 function modelLoadErrorMessage(err) {
   const msg = err?.message || String(err);
   const looksLikeModelLoad =
-    /onnx|InferenceSession|fetch|protobuf|CORS|Failed to load/i.test(msg);
-  if (!looksLikeModelLoad) return null;
-  const isCustom = state.modelUrl !== DEFAULT_MODEL_URL;
-  if (isCustom) {
-    return (
-      `Couldn't load model from "${state.modelUrl}". ` +
-      `Check the URL is a direct .onnx download served with CORS, or pass ?model=default to reset.`
+    /onnx|InferenceSession|fetch|protobuf|CORS|Failed to load|HTTP \d{3}/i.test(
+      msg,
     );
-  }
+  if (!looksLikeModelLoad) return null;
   return (
-    'Model not found at ./models/yolov8n.onnx. ' +
-    'Drop the file in, or pass ?model=<url> pointing to a hosted yolov8n.onnx (see README).'
+    `Couldn't load model from "${state.modelUrl}". ` +
+    `Check the URL is a direct .onnx download served with CORS, or pass ?model=default to reset. ` +
+    `(${msg})`
   );
 }
 
@@ -597,23 +756,22 @@ dom.stopBtn.addEventListener('click', async () => {
 
 dom.resetBtn.addEventListener('click', resetToSetup);
 
-// Surface the resolved model URL so the user knows which model will load
-// before they tap Start. Picks up `?model=` URL params and persisted
-// localStorage values; the resolve also runs again on Start in case the
-// user pastes a new ?model= without reloading.
+// Surface the resolved model URL and likely performance ceiling so the
+// user knows what to expect before they tap Start.
 renderModelHint();
+maybeRenderWebGpuWarning();
 
 function renderModelHint() {
   const url = resolveModelUrl();
   state.modelUrl = url;
+  const safe = url.replace(/[<>&"]/g, (c) =>
+    ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c],
+  );
   if (url === DEFAULT_MODEL_URL) {
     dom.modelHint.innerHTML =
-      'Model: <code>./models/yolov8n.onnx</code> (default). ' +
-      'Pass <code>?model=&lt;https URL&gt;</code> to load from elsewhere.';
+      `Model: <code>${safe}</code> (default, ~10.6 MB). ` +
+      'Pass <code>?model=&lt;https URL&gt;</code> to load a different one.';
   } else {
-    const safe = url.replace(/[<>&"]/g, (c) =>
-      ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c],
-    );
     dom.modelHint.innerHTML =
       `Model: <code>${safe}</code>. ` +
       'Pass <code>?model=default</code> to reset.';
