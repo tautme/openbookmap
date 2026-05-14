@@ -6,6 +6,7 @@ dist/
 *.log
 .vite/
 coverage/
+.claude/
 
 # ONNX model assets are committed under public/ocr-models/ but binary
 # files are excluded from prettier/eslint pipelines.
