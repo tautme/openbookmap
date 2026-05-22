@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Spine Count — OpenBookMap KISS POC</title>
+    <style>
+      :root {
+        --bg: #0b0b0d;
+        --fg: #f7f7f5;
+        --muted: #9a9a9a;
+        --accent: #22c55e;
+        --border: #2a2a30;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #000;
+        color: var(--fg);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        overflow: hidden;
+      }
+      /* Fullscreen stage: camera fills the screen, count floats on top. */
+      #stage {
+        position: fixed;
+        inset: 0;
+      }
+      video,
+      canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      canvas {
+        pointer-events: none;
+      }
+      /* The whole point: one big number. */
+      #count {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 28vw;
+        font-weight: 800;
+        line-height: 1;
+        color: #fff;
+        text-shadow:
+          0 0 40px rgba(0, 0, 0, 0.7),
+          0 4px 12px rgba(0, 0, 0, 0.9);
+        pointer-events: none;
+        transition: transform 0.12s ease-out;
+      }
+      #count.bump {
+        transform: translate(-50%, -50%) scale(1.12);
+      }
+      #count .label {
+        display: block;
+        font-size: 0.13em;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        opacity: 0.85;
+        text-align: center;
+        margin-top: 0.2em;
+      }
+      #peak {
+        position: fixed;
+        top: calc(12px + env(safe-area-inset-top));
+        right: 12px;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        pointer-events: none;
+      }
+      #peak strong {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      /* Setup + loading overlay. */
+      #overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--bg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 24px;
+        text-align: center;
+        z-index: 10;
+      }
+      #overlay h1 {
+        font-size: 1.2rem;
+        margin: 0;
+      }
+      #overlay p {
+        margin: 0;
+        max-width: 32ch;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+      button {
+        font: inherit;
+        font-size: 1.05rem;
+        font-weight: 600;
+        padding: 14px 28px;
+        border-radius: 12px;
+        border: none;
+        background: var(--accent);
+        color: #06140b;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+      .bar {
+        width: min(280px, 80vw);
+        height: 6px;
+        background: #0e0e12;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .bar > div {
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+        transition: width 0.15s;
+      }
+      .warn {
+        color: #fbbf24;
+        font-size: 0.82rem;
+        max-width: 34ch;
+        line-height: 1.5;
+      }
+      .err {
+        color: #ef4444;
+        font-size: 0.85rem;
+        max-width: 34ch;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <video id="video" playsinline muted autoplay></video>
+      <canvas id="overlayCanvas"></canvas>
+      <div id="count" hidden><span id="countNum">0</span
+        ><span class="label">books in frame</span></div>
+      <div id="peak" hidden>peak <strong id="peakNum">0</strong></div>
+    </div>
+
+    <div id="overlay">
+      <h1>📚 Spine Count</h1>
+      <p>
+        Point your camera at a bookshelf. The number is how many book spines
+        the model sees right now. Nothing is saved or uploaded.
+      </p>
+      <div id="warn" class="warn" hidden></div>
+      <button id="startBtn">Start camera</button>
+      <div id="loading" hidden>
+        <div class="bar"><div id="barFill"></div></div>
+        <p id="loadingLabel" style="margin-top: 8px">Loading model…</p>
+      </div>
+      <div id="err" class="err" hidden></div>
+    </div>
+
+    <script type="module" src="./count.js"></script>
+  </body>
+</html>
