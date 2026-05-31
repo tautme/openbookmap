@@ -9,7 +9,13 @@ import { supabase, STORAGE_BUCKET } from '../lib/supabase.js';
 import { strings } from '../lib/strings.js';
 import { escapeHtml, escapeAttr, normalizeTitle } from '../lib/format.js';
 import { showError, showSuccess, clearStatus } from '../lib/errors.js';
-import { extractTitles } from '../ocr/index.js';
+import {
+  extractTitles,
+  getActiveOcr,
+  getOcrTimings,
+  setOcrProviderByName,
+  resetOcrOverride,
+} from '../ocr/index.js';
 import { makeDerivatives } from '../images/compress.js';
 import { installAnalytics } from '../lib/analytics.js';
 
@@ -109,6 +115,7 @@ function renderUploadView(user) {
     </div>
 
     <div class="card">
+      ${renderOcrPickerLine()}
       <label class="dropzone" id="dropzone">
         <div style="font-size:16px;margin-bottom:8px">${escapeHtml(strings.contribute.dropzone)}</div>
         <div class="license-note" style="margin:0;border:none;padding:0">
@@ -123,6 +130,64 @@ function renderUploadView(user) {
       </div>
     </div>
   `;
+}
+
+// ——— OCR provider picker ————————————————————————————————————
+//
+// Auto-picks based on navigator.gpu at boot (paddle if WebGPU is
+// available, tesseract otherwise) and exposes a visible "Switch to X"
+// button so a user can override. Choice persists in localStorage; if
+// the page was loaded with `?ocr=`, that param stays in sync with the
+// stored choice so a shared URL keeps doing what it says.
+const OCR_LABELS = { paddle: 'Paddle', tesseract: 'Tesseract' };
+
+function renderOcrPickerLine() {
+  const { name, source } = getActiveOcr();
+  if (!name) return '';
+  const timings = getOcrTimings();
+  const ms = timings[name];
+  const niceName = OCR_LABELS[name] || name;
+  const other = name === 'paddle' ? 'tesseract' : 'paddle';
+  const otherNice = OCR_LABELS[other];
+  const autoTag =
+    source === 'auto'
+      ? ' <span class="ocr-pick-tag">auto</span>'
+      : source === 'url'
+        ? ' <span class="ocr-pick-tag">via URL</span>'
+        : '';
+  const lastStr = ms ? ` · ${(ms / 1000).toFixed(1)}s last run` : '';
+  return `
+    <div class="ocr-pick">
+      <span class="ocr-pick-label">
+        OCR: <strong>${escapeHtml(niceName)}</strong>${autoTag}${escapeHtml(lastStr)}
+      </span>
+      <button class="ocr-pick-switch" id="ocr-switch" type="button"
+              data-target="${escapeAttr(other)}">
+        Switch to ${escapeHtml(otherNice)}
+      </button>
+    </div>
+  `;
+}
+
+function wireOcrPicker() {
+  const btn = document.getElementById('ocr-switch');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.target;
+    if (target === 'auto') {
+      resetOcrOverride();
+    } else if (target === 'paddle' || target === 'tesseract') {
+      setOcrProviderByName(target, { source: 'manual', persist: true });
+    }
+    refreshOcrPicker();
+  });
+}
+
+function refreshOcrPicker() {
+  const container = document.querySelector('.ocr-pick');
+  if (!container) return;
+  container.outerHTML = renderOcrPickerLine();
+  wireOcrPicker();
 }
 
 // ——— Wiring ——————————————————————————————————————————————————
@@ -182,6 +247,7 @@ function wireUploader() {
   const statusEl = document.getElementById('upload-status');
   const saveBtn = document.getElementById('save-btn');
 
+  wireOcrPicker();
   fileInput.addEventListener('change', (e) => addFiles(e.target.files));
   dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -231,6 +297,8 @@ function wireUploader() {
       entry.titles = ocrResult.titles.map((t) => ({ title: normalizeTitle(t), author: '' }));
       entry.status =
         entry.titles.length > 0 ? strings.contribute.ocrDone : strings.contribute.ocrFailed;
+      // Surface the freshly-measured runtime in the picker line.
+      refreshOcrPicker();
     } catch (err) {
       entry.status = strings.contribute.ocrFailed;
       console.error(err);
