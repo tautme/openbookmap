@@ -188,7 +188,7 @@ If the ONNX file is missing or fails to load, the contribute flow falls back to 
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md). Daily Zoom at 10am PST: [us02web.zoom.us/j/4639378882](https://us02web.zoom.us/j/4639378882). Email [adam@openbookmap.org](mailto:adam@openbookmap.org).
+See [CONTRIBUTING.md](./CONTRIBUTING.md). Zoom to discuss: [us02web.zoom.us/j/4639378882](https://us02web.zoom.us/j/4639378882). Email [adam@openbookmap.org](mailto:adam@openbookmap.org).
 
 ---
 
