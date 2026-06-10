@@ -30,17 +30,29 @@ origin as the page (avoids cross-origin wasm restrictions).
 If you upgrade `onnxruntime-web` or `@gutenye/ocr-models`, refresh the
 copies under `public/ocr-models/` to match.
 
-## Forcing a provider for testing
+## Picking a provider
 
-Append `?ocr=<name>` to `/contribute.html` to pin a specific provider —
-useful while we're still benchmarking OCR options against real spines.
-The pinned provider runs alone (no fallback), so timing and accuracy
-aren't muddied by the chain. The flag is a no-op on other pages, since
-they don't import the OCR module.
+On boot the OCR module walks a three-step cascade:
+
+1. `?ocr=<name>` URL parameter (highest priority, persisted to
+   `localStorage`).
+2. Previously-chosen provider stored under `localStorage['obm.ocr']`.
+3. **Auto-pick based on this device**: if `navigator.gpu` is present
+   (WebGPU) → `paddle`; otherwise → `tesseract`. Logged to the console
+   at load: `OCR: auto-picked tesseract (no WebGPU).`
+
+The contribute page surfaces a compact picker at the top of the upload
+card — `OCR: **Paddle** [auto] · 2.4s last run · [Switch to Tesseract]`.
+Tapping the switch button writes the chosen provider to `localStorage`
+(and rewrites `?ocr=` if it's in the URL) so subsequent uploads use it.
+
+### Forcing a provider for testing
+
+`?ocr=<name>` still works for ad-hoc A/B testing without code changes:
 
 - `?ocr=paddle` — PaddleOCR only.
 - `?ocr=tesseract` — Tesseract only.
-- `?ocr=default` — clear the override; restore the paddle→tesseract chain.
+- `?ocr=default` — clear the override; restore the auto-pick.
 
 The choice persists in `localStorage` under `obm.ocr`, so subsequent
 navigations keep the override until you pass `?ocr=default` (or clear

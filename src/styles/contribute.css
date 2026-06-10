@@ -55,6 +55,60 @@
   margin-top: 4px;
 }
 
+/* OCR provider picker — sits above the dropzone. Compact on phones; the
+   "Switch to X" button is a ~40px tap target. */
+.ocr-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+}
+.ocr-pick-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ocr-pick-label strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.ocr-pick-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-left: 4px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  text-transform: lowercase;
+}
+.ocr-pick-switch {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  min-height: 40px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ocr-pick-switch:active {
+  background: var(--card);
+}
+
 .dropzone {
   border: 2px dashed var(--rule);
   padding: 40px 20px;
