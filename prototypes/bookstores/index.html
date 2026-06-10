@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Bookstores — OpenBookMap KISS POC</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+    <style>
+      :root {
+        --bg: #0b0b0d;
+        --fg: #f7f7f5;
+        --muted: #9a9a9a;
+        --card: #17171b;
+        --border: #2a2a30;
+        --accent: #22c55e;
+        --used: #f59e0b;
+        --indie: #22c55e;
+        --chain: #6366f1;
+        --unknown: #6b7280;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        height: 100%;
+        overflow: hidden;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        padding: 10px 16px 8px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      h1 {
+        font-size: 0.95rem;
+        margin: 0 0 6px;
+        letter-spacing: 0.02em;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .search {
+        flex: 1 1 220px;
+        min-width: 0;
+        display: flex;
+        gap: 6px;
+      }
+      .search input {
+        flex: 1;
+        min-width: 0;
+        padding: 7px 10px;
+        background: #0e0e12;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--fg);
+        font: inherit;
+        font-size: 0.85rem;
+      }
+      .search button {
+        padding: 7px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--fg);
+        font: inherit;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+      .filter {
+        display: inline-flex;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+        font-size: 0.78rem;
+      }
+      .filter label {
+        padding: 6px 10px;
+        cursor: pointer;
+        white-space: nowrap;
+        color: var(--muted);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .filter input[type='radio'] {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .filter input[type='radio']:checked + .label-text {
+        color: var(--fg);
+      }
+      .filter label:has(input:checked) {
+        background: #2a2a30;
+        color: var(--fg);
+      }
+      .dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .dot.all {
+        background: var(--accent);
+      }
+      .dot.used {
+        background: var(--used);
+      }
+      .dot.indie {
+        background: var(--indie);
+      }
+      .dot.chain {
+        background: var(--chain);
+      }
+      .dot.unknown {
+        background: var(--unknown);
+      }
+      #status {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-left: auto;
+        white-space: nowrap;
+      }
+      #status.error {
+        color: #ef4444;
+      }
+      #map {
+        flex: 1;
+        background: #1a1a1f;
+      }
+      .leaflet-popup-content {
+        font-size: 0.85rem;
+        line-height: 1.5;
+      }
+      .leaflet-popup-content h3 {
+        margin: 0 0 4px;
+        font-size: 0.95rem;
+      }
+      .leaflet-popup-content .tags {
+        margin-top: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .leaflet-popup-content .tag {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        color: #111;
+      }
+      .leaflet-popup-content .tag.used {
+        background: #fde68a;
+      }
+      .leaflet-popup-content .tag.indie {
+        background: #bbf7d0;
+      }
+      .leaflet-popup-content .tag.chain {
+        background: #c7d2fe;
+      }
+      .legend {
+        position: absolute;
+        bottom: 16px;
+        left: 16px;
+        background: rgba(11, 11, 13, 0.92);
+        border: 1px solid var(--border);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        color: var(--fg);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        z-index: 1000;
+        pointer-events: none;
+      }
+      .legend .row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .legend .count {
+        color: var(--muted);
+        margin-left: auto;
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>📚 Bookstores — KISS POC</h1>
+      <div class="controls">
+        <form class="search" id="searchForm">
+          <input
+            id="searchInput"
+            type="text"
+            placeholder="Jump to a city or place…"
+            autocomplete="off"
+          />
+          <button type="submit">Go</button>
+        </form>
+        <div class="filter" role="radiogroup" aria-label="Show">
+          <label
+            ><input type="radio" name="filter" value="all" checked /><span
+              class="label-text"
+              ><span class="dot all"></span> All</span
+            ></label
+          >
+          <label
+            ><input type="radio" name="filter" value="used" /><span
+              class="label-text"
+              ><span class="dot used"></span> Used</span
+            ></label
+          >
+          <label
+            ><input type="radio" name="filter" value="indie" /><span
+              class="label-text"
+              ><span class="dot indie"></span> Indie</span
+            ></label
+          >
+          <label
+            ><input type="radio" name="filter" value="chain" /><span
+              class="label-text"
+              ><span class="dot chain"></span> Chain</span
+            ></label
+          >
+        </div>
+        <div id="status">Pan or search to load bookstores</div>
+      </div>
+    </header>
+
+    <div id="map">
+      <div class="legend" id="legend" hidden>
+        <div class="row">
+          <span class="dot used"></span> used
+          <span class="count" id="legendUsed">0</span>
+        </div>
+        <div class="row">
+          <span class="dot indie"></span> indie
+          <span class="count" id="legendIndie">0</span>
+        </div>
+        <div class="row">
+          <span class="dot chain"></span> chain
+          <span class="count" id="legendChain">0</span>
+        </div>
+        <div class="row">
+          <span class="dot unknown"></span> unknown
+          <span class="count" id="legendUnknown">0</span>
+        </div>
+      </div>
+    </div>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
+      crossorigin=""
+    ></script>
+    <script type="module" src="./bookstores.js"></script>
+  </body>
+</html>
